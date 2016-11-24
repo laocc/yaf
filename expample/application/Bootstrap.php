@@ -2,8 +2,8 @@
 
 use \Yaf\Dispatcher;
 
-use laocc\yaf\Router;
-use laocc\yaf\View;
+use \laocc\yaf\Router;
+use \laocc\yaf\View;
 
 class Bootstrap extends \Yaf\Bootstrap_Abstract
 {

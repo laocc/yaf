@@ -4,9 +4,9 @@
 
 
 # 安装：
-先安装好yaf，详见：
-再在项目composer.json中加：
-```
+## 1，通过composer安装：（建议）
+composer.json
+```json
 {
   "require": {
         "php": ">7.0.0",
@@ -15,15 +15,25 @@
   }
 }
 ```
+## 2，直接使用：
+直接克隆本项目，或下载版本包，放至网站根目录。将下面使用中import部分改为：
+```php
+<?php
+
+\Yaf\Loader::import(_ROOT . '/本插件包目录名/kernel/autoload.php');
+
+```
+
 
 # 使用：
+Bootstrap.php
 ```php
 <?php
 
 use \Yaf\Dispatcher;
 
-use laocc\yaf\Router;
-use laocc\yaf\View;
+use \laocc\yaf\Router;
+use \laocc\yaf\View;
 
 class Bootstrap extends \Yaf\Bootstrap_Abstract
 {
