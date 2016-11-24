@@ -1,0 +1,31 @@
+{
+      "name": "laocc/yaf",
+      "description": "for yaf",
+      "version": "v1.0.1",
+      "require": {
+            "php": ">7.0.0",
+            "ext-yaf": ">3.0",
+            "smarty/smarty": "~3.1",
+            "laocc/dbs": "dev-master",
+            "laocc/gds": "dev-master"
+      },
+      "authors": [
+            {
+                  "name": "LaoCC",
+                  "email": "fazo@qq.com"
+            }
+      ],
+      "keywords": [
+            "yaf plugins"
+      ],
+      "support": {
+            "source": "https://github.com/laocc/yaf"
+      },
+      "autoload": {
+            "psr-4": {
+                  "laocc\\yaf\\": "kernel/"
+            }
+      },
+      "type": "library",
+      "license": "LGPL"
+}
