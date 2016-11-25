@@ -14,9 +14,16 @@ class Bootstrap extends \Yaf\Bootstrap_Abstract
      */
     public function _initRoutes(Dispatcher $dispatcher)
     {
-        \Yaf\Loader::import(_ROOT . '/../kernel/autoload.php');
+        \Yaf\Loader::import(_ROOT . '/../vendor/autoload.php');
         $dispatcher->registerPlugin(new Router($dispatcher));
-        $dispatcher->registerPlugin(new View($dispatcher));
+
+        $setting = [
+            'layout' => true,
+            'smarty' => 'cache',
+            'cache' => true,
+        ];
+
+        $dispatcher->registerPlugin(new View($dispatcher, $setting));
     }
 
 }

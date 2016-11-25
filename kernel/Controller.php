@@ -44,9 +44,9 @@ abstract class Controller extends Controller_Abstract
      * @param null $value
      * @return Simple
      */
-    final protected function layout()
+    final protected function layout($set = null)
     {
-        return $this->view()->layout();
+        return $this->view()->layout($set);
     }
 
     /**
@@ -62,9 +62,9 @@ abstract class Controller extends Controller_Abstract
      * @return bool|\Smarty
      *
      */
-    final protected function smarty()
+    final protected function smarty($use = null)
     {
-        return $this->view()->smarty();
+        return $this->view()->smarty($use);
     }
 
     /**
@@ -75,7 +75,6 @@ abstract class Controller extends Controller_Abstract
     {
         return $this->view()->cache($bool);
     }
-
 
 
     final protected function assign($key, $value)
@@ -125,19 +124,19 @@ abstract class Controller extends Controller_Abstract
 
     final protected function title($value)
     {
-        $this->view()->keys('title', $value);
+        $this->view()->meta('_title', $value);
         return $this;
     }
 
     final protected function keywords($value)
     {
-        $this->view()->keys('keywords', $value);
+        $this->view()->meta('keywords', $value);
         return $this;
     }
 
     final protected function description($value)
     {
-        $this->view()->keys('description', $value);
+        $this->view()->meta('description', $value);
         return $this;
     }
 
@@ -152,6 +151,7 @@ abstract class Controller extends Controller_Abstract
         if (!!$callback) $value = "{$callback}({$value})";
         $this->view()->out_value('json', $value);
     }
+
     final protected function xml($key, array $value = [])
     {
         if (is_array($key) and empty($value)) list($key, $value) = ['xml', $key];

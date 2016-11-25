@@ -33,6 +33,10 @@ final class Router extends Plugin_Abstract
         if (!$routeConfig) return;
 
         $this->_routes = $routeConfig = array_reverse($routeConfig->toArray());
+        unset($routeConfig['_default']);
+        if (!isset($this->_routes['_default'])) {
+            $this->_routes['_default'] = [];
+        }
 
         //把指定用自定义解析器的部分给剐下来
         $private = [];
@@ -52,7 +56,7 @@ final class Router extends Plugin_Abstract
     }
 
     //2,路由结束之后触发
-    public function routerShutdowns(Request_Abstract $request, Response_Abstract $response)
+    public function routerShutdown(Request_Abstract $request, Response_Abstract $response)
     {
         $app = $this->dispatcher->getApplication();
 
@@ -66,7 +70,6 @@ final class Router extends Plugin_Abstract
         //获取生效的路由名称，并读取该路由的相关设置
         $_ef_rt = $request->getParam('_effect_route');
         if (!$_ef_rt) $request->setParam('_effect_route', $_ef_rt = $this->dispatcher->getRouter()->getCurrentRoute());
-        if ($_ef_rt === '_default') return;
         if (!isset($this->_routes[$_ef_rt])) exit("发生未知错误，应该不会出现这情况的：设置的路由表中没有实际生效路由[{$_ef_rt}]");
 
         $route = $this->_routes[$_ef_rt];
@@ -84,10 +87,16 @@ final class Router extends Plugin_Abstract
             $app->setAppDirectory($route['directory']);
         }
 
-
         $set = [];
         $set['view'] = true;
-        $set['cache'] = null;
+        if (isset($route['layout'])) $set['layout'] = $route['layout'];
+        if (isset($route['smarty'])) $set['smarty'] = $route['smarty'];
+        if (isset($route['static'])) $set['static'] = $route['static'];
+        if (isset($route['concat'])) $set['concat'] = $route['concat'];
+
+        //缓存设置，结果可能为：true/false，或array(参与cache的$_GET参数)
+        if (isset($route['cache'])) $set['cache'] = is_array($route['cache']) ? $route['cache'] : !!$route['cache'];
+
 
         //视图相关设置，结果有可能是：true/false，或array(view的一系列定义)
         if (isset($route['view'])) {
@@ -97,12 +106,6 @@ final class Router extends Plugin_Abstract
                 $set['view'] = $route['view'];
             }
         }
-
-        //缓存设置，结果可能为：true/false，或array(参与cache的$_GET参数)
-        if (isset($route['cache'])) {
-            $set['cache'] = is_array($route['cache']) ? $route['cache'] : !!$route['cache'];
-        }
-
 
         Registry::set('_route_setting', $set);
 
