@@ -12,15 +12,21 @@ use Yaf\Response_Abstract;
 final class Router extends Plugin_Abstract
 {
     private $dispatcher;
+    private $cache;
     private $_ini_root = [];
     private $_routes = [];
 
-    public function __construct(Dispatcher $dispatcher, string $file = null, string $root = 'product')
+
+    public function __construct(Dispatcher $dispatcher, Cache $cache, $setting = [])
     {
         $this->dispatcher = $dispatcher;
-        if (is_null($file)) $file = _ROOT . 'config/routes.ini';
-        if (!is_readable($file)) exit("Ini文件不存在或不可读：{$file}");
-        $this->_ini_root = [$file, $root];
+        $this->cache = $cache;
+        $setting += [
+            'file' => _ROOT . 'config/routes.ini',
+            'root' => 'product',
+        ];
+        if (!is_readable($setting['file'])) exit("Ini文件不存在或不可读：{$setting['file']}");
+        $this->_ini_root = [$setting['file'], $setting['root']];
     }
 
     /**
@@ -90,13 +96,12 @@ final class Router extends Plugin_Abstract
         $set = [];
         $set['view'] = true;
         if (isset($route['layout'])) $set['layout'] = $route['layout'];
-        if (isset($route['smarty'])) $set['smarty'] = $route['smarty'];
+        if (isset($route['smarty'])) $set['smarty'] = empty($route['smarty']) ? false : $route['smarty'];
         if (isset($route['static'])) $set['static'] = $route['static'];
         if (isset($route['concat'])) $set['concat'] = $route['concat'];
-
-        //缓存设置，结果可能为：true/false，或array(参与cache的$_GET参数)
-        if (isset($route['cache'])) $set['cache'] = is_array($route['cache']) ? $route['cache'] : !!$route['cache'];
-
+        if (!$request->isXmlHttpRequest() and isset($route['cache']) and !!$route['cache']) {
+            $this->cache->display($request);
+        }
 
         //视图相关设置，结果有可能是：true/false，或array(view的一系列定义)
         if (isset($route['view'])) {

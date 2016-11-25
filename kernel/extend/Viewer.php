@@ -2,12 +2,15 @@
 namespace laocc\yaf\extend;
 
 
+use laocc\yaf\Cache;
 use Yaf\Dispatcher;
+use Yaf\Registry;
 use Yaf\View_Interface;
 
 class Viewer implements View_Interface
 {
     private $dispatcher;
+    private $_cache;
     private $_config;
     private $_isCli;
     private $_isLayout = false;
@@ -32,9 +35,10 @@ class Viewer implements View_Interface
 
     private $_layout_default = 'layout.php';
 
-    public function __construct(Dispatcher $dispatcher, $isCli, $conf)
+    public function __construct(Dispatcher $dispatcher, $conf, Cache $cache = null, $isCli = false)
     {
         $this->dispatcher = $dispatcher;
+        $this->_cache = $cache;
         $this->_config = $conf;
         $this->_isCli = $isCli;
         if (isset($conf['isLayout'])) {
@@ -65,7 +69,7 @@ class Viewer implements View_Interface
                 'isLayout' => true,
                 'concat' => $this->_config['concat'],
             ];
-            if (is_null($layObj)) $layObj = new Viewer($this->dispatcher, $this->_isCli, $conf);
+            if (is_null($layObj)) $layObj = new Viewer($this->dispatcher, $conf);
             return $layObj;
         }
         $this->_config['layout'] = $cons;
@@ -107,9 +111,9 @@ class Viewer implements View_Interface
         return true;
     }
 
-    public function cache(bool $cons)
+    public function cache(bool $bool)
     {
-        $this->_config['cache'] = $cons;
+        $this->_cache->enable($bool);
     }
 
 
@@ -237,26 +241,15 @@ class Viewer implements View_Interface
             if (!$this->_isCli) header('Content-type:' . $this->_mime[$this->_config['type']], true);
             $html = $this->_config['value'];
         } else {
-
             //修正最后视图文件名称
             $this->real_tpl($tpl);
             if (!is_readable($tpl)) throw new \Exception("视图文件不存在或不可读 {$tpl}");
 
             $html = $this->render_all($tpl, $var_array);
         }
+        $type = $this->_config['type'] ?: 'html';
+        $this->_cache->cache_save($this->_mime[$type], $html);
 
-        //静态化
-        $save = 0;
-        if ($this->_config['static']) {
-            $save = @file_put_contents($this->_config['static'], $html, LOCK_EX);
-            if ($save !== strlen($html)) {
-                @unlink($this->_config['static']);
-                $save = 0;
-            }
-        }
-
-        //若没有静态化，或静态失败，才会缓存
-//        if (!$save) $this->cache_set($this->_config['cache'], $html, $this->_config['type']);
         return $html;
     }
 
