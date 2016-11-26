@@ -16,7 +16,6 @@ class Cache
     private $_setting;
     private $_static;
     private $_kvConfig;
-    private $_table_key = 'yaf_cache';
 
     public function __construct(Dispatcher $dispatcher, $setting = [], $static = [], $conn = null)
     {

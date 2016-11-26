@@ -30,8 +30,6 @@ final class View extends Plugin_Abstract
      */
     public function dispatchLoopStartup(Request_Abstract $request, Response_Abstract $response)
     {
-
-
         $setting = Registry::get('_route_setting');//路由值
         if (empty($setting)) $setting = [];
         $viewerConfig = $setting + [

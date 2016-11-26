@@ -9,6 +9,26 @@
 
 这个库也是一个相对完整的yaf结构
 
+
+# 功能
+## 路由扩展：
+1. 正则路由中，可以通过正则匹配结果指定模块、控制器、动作；
+2. 路由表中可以定义一些影响输出的东西
+3. 修正yaf原本默认模块无效的情况
+
+## 视图扩展：
+1. 添加框架视图功能；
+2. 控制器输出增加：json/xml/text，对于html除了视图输出外，可以直接输出html文本，相当于echo；
+3. 在控制器动作中很多直接对视图的操作，如加js/css等，自动组织js/css连接；
+
+
+## 缓存扩展：
+1. 缓存控制器结果；
+2. 视图标签可以使用smarty；
+3. 自动文本静态化（也可设置过期时间）；
+
+
+
 # 安装：
 ## 1，通过composer安装：（建议）
 composer.json
@@ -22,34 +42,5 @@ composer.json
   }
 }
 ```
-## 2，直接使用：
-直接克隆本项目，或下载版本包，放至网站根目录。将下面使用中import部分改为：
-```php
-<?php
 
-\Yaf\Loader::import(_ROOT . '/本插件包目录名/kernel/autoload.php');
-
-```
-
-
-# 使用：
-Bootstrap.php
-```php
-<?php
-
-use \Yaf\Dispatcher;
-
-use \laocc\yaf\Router;
-use \laocc\yaf\View;
-
-class Bootstrap extends \Yaf\Bootstrap_Abstract
-{
-    public function _initRoutes(Dispatcher $dispatcher)
-    {
-        \Yaf\Loader::import(_ROOT . '/../vendor/autoload.php');
-        $dispatcher->registerPlugin(new Router($dispatcher));
-        $dispatcher->registerPlugin(new View($dispatcher));
-    }
-}
-```
 
