@@ -16,9 +16,6 @@
       "keywords": [
             "yaf plugins"
       ],
-      "support": {
-            "source": "https://github.com/laocc/yaf"
-      },
       "autoload": {
             "psr-4": {
                   "laocc\\yaf\\": "kernel/"
