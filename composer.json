@@ -1,7 +1,6 @@
 {
       "name": "laocc/yaf",
       "description": "for yaf",
-      "version": "v1.0.1",
       "require": {
             "php": ">7.0.0",
             "ext-yaf": ">3.0",
