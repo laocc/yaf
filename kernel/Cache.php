@@ -75,7 +75,7 @@ class Cache
                 break;
             }
         }
-        if (is_null($filename)) return false;
+        if (is_null($filename) or preg_match('/^.+((\.php)|\/)$/i', $filename)) return false;
 
         $save = $this->save_file($filename, $html);
         if ($save !== strlen($html)) {
