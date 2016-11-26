@@ -76,6 +76,11 @@ abstract class Controller extends Controller_Abstract
         return $this->view()->cache($bool);
     }
 
+    final protected function static(bool $bool = true)
+    {
+        return $this->view()->static($bool);
+    }
+
 
     final protected function assign($key, $value)
     {
@@ -101,10 +106,10 @@ abstract class Controller extends Controller_Abstract
      * 也就是说这儿利用视图插件做中转，解析页面时再决定往哪里释放
      *
      * @param $file
-     * @param int $position
+     * @param int $position head/body/defer/footer(默认)
      * @return $this
      */
-    final protected function js($file, $position = 1)
+    final protected function js($file, $position = 'footer')
     {
         $this->view()->js($file, $position);
         return $this;

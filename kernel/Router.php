@@ -12,15 +12,17 @@ use Yaf\Response_Abstract;
 final class Router extends Plugin_Abstract
 {
     private $dispatcher;
-    private $cache;
+    private $_cache;
     private $_ini_root = [];
     private $_routes = [];
 
 
-    public function __construct(Dispatcher $dispatcher, Cache $cache, $setting = [])
+    public function __construct(Dispatcher $dispatcher, $setting = [], Cache $cache = null)
     {
+        if ($setting instanceof Ini) $setting = ($setting->toArray());
+
         $this->dispatcher = $dispatcher;
-        $this->cache = $cache;
+        $this->_cache = $cache;
         $setting += [
             'file' => _ROOT . 'config/routes.ini',
             'root' => 'product',
@@ -29,11 +31,15 @@ final class Router extends Plugin_Abstract
         $this->_ini_root = [$setting['file'], $setting['root']];
     }
 
+
     /**
      * 1.在路由之前触发
      */
     public function routerStartup(Request_Abstract $request, Response_Abstract $response)
     {
+        //检查静态是否过期
+        $this->_cache->check_static_expires($request);
+
         $routeConfig = new Ini($this->_ini_root[0]);
         $routeConfig = $routeConfig->{$this->_ini_root[1]};
         if (!$routeConfig) return;
@@ -97,11 +103,14 @@ final class Router extends Plugin_Abstract
         $set['view'] = true;
         if (isset($route['layout'])) $set['layout'] = $route['layout'];
         if (isset($route['smarty'])) $set['smarty'] = empty($route['smarty']) ? false : $route['smarty'];
-        if (isset($route['static'])) $set['static'] = $route['static'];
-        if (isset($route['concat'])) $set['concat'] = $route['concat'];
-        if (!$request->isXmlHttpRequest() and isset($route['cache']) and !!$route['cache']) {
-            $this->cache->display($request);
+        if (isset($route['static'])) $set['static'] = boolval($route['static']);
+        if (isset($route['concat'])) $set['concat'] = boolval($route['concat']);
+
+        if (!$request->isCli() and isset($route['cache'])) {
+            if ($this->_cache instanceof Cache and !!$route['cache']) $this->_cache->display($request);
+            $this->_cache->enable(!!$route['cache']);
         }
+        if ($set['smarty'] == 1) $set['smarty'] = true;
 
         //视图相关设置，结果有可能是：true/false，或array(view的一系列定义)
         if (isset($route['view'])) {

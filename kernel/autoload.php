@@ -29,29 +29,37 @@ function LaoCC_databases_register($class)
         'laocc\\yaf\\' => "{$root}/kernel/",
     ];
 
-    //特殊类设置，针对MVC体系中MC类名称的特殊定义
-    $classExt = [
-        'model' => 'models/',
-        'controller' => 'controllers/',
+    $classMap = [
+        'smarty' => "{$root}/vendor/smarty/smarty/libs/Smarty.class.php",
+        'smartybc' => "{$root}/vendor/smarty/smarty/libs/SmartyBC.class.php",
     ];
 
-    $file = preg_replace_callback('/^([\w\\\]*?)(\w+?)(model|controller)?$/i', function ($match) use ($namespace, $classExt) {
-        $mcExt = (isset($match[3]) and isset($classExt[$match[3]])) ? $classExt[$match[3]] : null;
+    $static = [
+        "{$root}/vendor/smarty/smarty/libs/sysplugins/",
+    ];
 
-        //正好命中namespace
-        if (isset($namespace[$match[1]])) return $namespace[$match[1]] . $mcExt . ucfirst($match[2]) . '.php';
+    $file = preg_replace_callback('/^([\w\\\]*?)(\w+?)$/i', function ($match) use ($namespace, $classMap, $static) {
+
+        if (isset($namespace[$match[1]])) return $namespace[$match[1]] . ucfirst($match[2]) . '.php';
+
+        if (isset($classMap[$match[0]])) return $classMap[$match[0]];
+
+        foreach ($static as $i => $dir) {
+            $fil = $dir . $match[2] . '.php';
+            if (is_file($fil)) return $fil;
+        }
 
         //查找可能是namespace中的下级空间
         foreach ($namespace as $name => $space) {
             if (stripos($match[1], $name) === 0) {
                 $child = str_replace('\\', '/', substr($match[1], strlen($name)));
-                if (is_dir($space . $child . $mcExt))
-                    return $space . $child . $mcExt . ucfirst($match[2]) . '.php';
+                if (is_dir($space . $child))
+                    return $space . $child . ucfirst($match[2]) . '.php';
             }
         }
 
         //根据命名空间转换路径查找
-        return str_replace('\\', '/', $match[1]) . $mcExt . ucfirst($match[2]) . '.php';
+        return str_replace('\\', '/', $match[1]) . ucfirst($match[2]) . '.php';
 
     }, strtolower($class));
 

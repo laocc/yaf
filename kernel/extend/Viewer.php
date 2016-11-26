@@ -3,6 +3,7 @@ namespace laocc\yaf\extend;
 
 
 use laocc\yaf\Cache;
+use Yaf\Config\Ini;
 use Yaf\Dispatcher;
 use Yaf\Registry;
 use Yaf\View_Interface;
@@ -37,6 +38,8 @@ class Viewer implements View_Interface
 
     public function __construct(Dispatcher $dispatcher, $conf, Cache $cache = null, $isCli = false)
     {
+        if ($conf instanceof Ini) $conf = ($conf->toArray());
+
         $this->dispatcher = $dispatcher;
         $this->_cache = $cache;
         $this->_config = $conf;
@@ -65,8 +68,8 @@ class Viewer implements View_Interface
                 'type' => null,
                 'layout' => null,
                 'smarty' => null,
-                'static' => null,
                 'isLayout' => true,
+                'static' => false,
                 'concat' => $this->_config['concat'],
             ];
             if (is_null($layObj)) $layObj = new Viewer($this->dispatcher, $conf);
@@ -96,7 +99,6 @@ class Viewer implements View_Interface
                 } elseif (is_array($this->_config['smarty'])) {
                     $set = $this->_config['smarty'];
                 }
-
                 $_adapter = new \Smarty();
                 if (isset($set['path'])) {
                     $_adapter->setCompileDir($set['path']);
@@ -113,7 +115,8 @@ class Viewer implements View_Interface
 
     public function cache(bool $bool)
     {
-        $this->_cache->enable($bool);
+        if ($this->_cache instanceof Cache)
+            $this->_cache->enable($bool);
     }
 
 
@@ -248,24 +251,42 @@ class Viewer implements View_Interface
             $html = $this->render_all($tpl, $var_array);
         }
         $type = $this->_config['type'] ?: 'html';
-        $this->_cache->cache_save($this->_mime[$type], $html);
+
+        if ($this->_cache instanceof Cache)
+            $this->_cache->cache_save($this->_mime[$type], $html, $this->_config['static']);
 
         return $html;
     }
 
+
+    public function static (bool $bool)
+    {
+        $this->_config['static'] = $bool;
+    }
+
+
     private function render_all($file, array $value)
     {
+        //加一个检查静态的连接
+        if ($this->_config['static']) {
+            $uri = $this->_cache->create_static_uri();
+            if ($uri) $this->_res['_js_defer'][] = $uri;
+        }
+
         if ($this->_config['layout']) {
             if (is_string($this->_config['layout'])) {
                 $i = strpos($this->_config['layout'], '/');
-                if ($i === false) {//指定的是文件类型
+                if ($i === false and strpos($this->_config['layout'], '.')) {//指定的是文件类型
                     $this->_layout_default = $this->_config['layout'];
                 } elseif ($i > 0) {
                     $layout = $this->getScriptPath() . $this->_config['layout'];
+//                    var_dump($layout);
                 } else {
                     $layout = $this->_config['layout'];
+                    var_dump($layout);
                 }
             }
+
             if (!isset($layout)) {
                 $layout = dirname($file) . '/' . $this->_layout_default;
                 if (!is_file($layout)) {
@@ -345,7 +366,6 @@ class Viewer implements View_Interface
 
     /**
      * 重新组合网页几个要素
-     * 便于解析时向视图释放
      * js/css/meta
      */
     private function re_resource()
@@ -366,27 +386,27 @@ class Viewer implements View_Interface
             $js2 = $dom . '??' . implode(",", $this->_res['_js_footer']) . $rand;
             $js3 = $dom . '??' . implode(",", $this->_res['_js_defer']) . $rand;
 
-            $this->_res['_css'] = "<link rel=\"stylesheet\" href=\"{$css}\" charset=\"utf-8\" />";
-            $this->_res['_js_head'] = "<script type=\"text/javascript\" src=\"{$js0}\" charset=\"utf-8\" ></script>\n";
-            $this->_res['_js_body'] = "<script type=\"text/javascript\" src=\"{$js1}\" charset=\"utf-8\" ></script>\n";
-            $this->_res['_js_footer'] = "<script type=\"text/javascript\" src=\"{$js2}\" charset=\"utf-8\" ></script>\n";
-            $this->_res['_js_defer'] = "<script type=\"text/javascript\" src=\"{$js3}\" charset=\"utf-8\" defer=\"defer\" ></script>\n";
+            $this->_res['_css'] = "<link rel=\"stylesheet\" href=\"{$css}\" charset=\"utf-8\"/>";
+            $this->_res['_js_head'] = "<script type=\"text/javascript\" src=\"{$js0}\" charset=\"utf-8\"></script>\n";
+            $this->_res['_js_body'] = "<script type=\"text/javascript\" src=\"{$js1}\" charset=\"utf-8\"></script>\n";
+            $this->_res['_js_footer'] = "<script type=\"text/javascript\" src=\"{$js2}\" charset=\"utf-8\"></script>\n";
+            $this->_res['_js_defer'] = "<script type=\"text/javascript\" src=\"{$js3}\" charset=\"utf-8\" defer=\"defer\"></script>\n";
         } else {
             $css = $js0 = $js1 = $js2 = $js3 = [];
             foreach ($this->_res['_css'] as $item) {
-                $css[] = "<link rel=\"stylesheet\" href=\"{$domain($item)}\" charset=\"utf-8\" />";
+                $css[] = "<link rel=\"stylesheet\" href=\"{$domain($item)}\" charset=\"utf-8\"/>";
             }
             foreach ($this->_res['_js_head'] as $item) {
-                $js0[] = "<script type=\"text/javascript\" src=\"{$domain($item)}\" charset=\"utf-8\" ></script>";
+                $js0[] = "<script type=\"text/javascript\" src=\"{$domain($item)}\" charset=\"utf-8\"></script>";
             }
             foreach ($this->_res['_js_body'] as $item) {
-                $js1[] = "<script type=\"text/javascript\" src=\"{$domain($item)}\" charset=\"utf-8\" ></script>";
+                $js1[] = "<script type=\"text/javascript\" src=\"{$domain($item)}\" charset=\"utf-8\"></script>";
             }
             foreach ($this->_res['_js_footer'] as $item) {
-                $js2[] = "<script type=\"text/javascript\" src=\"{$domain($item)}\" charset=\"utf-8\" ></script>";
+                $js2[] = "<script type=\"text/javascript\" src=\"{$domain($item)}\" charset=\"utf-8\"></script>";
             }
             foreach ($this->_res['_js_defer'] as $item) {
-                $js3[] = "<script type=\"text/javascript\" src=\"{$domain($item)}\" charset=\"utf-8\" defer=\"defer\" ></script>";
+                $js3[] = "<script type=\"text/javascript\" src=\"{$domain($item)}\" charset=\"utf-8\" defer=\"defer\"></script>";
             }
             $this->_res['_css'] = "\n" . implode("\n", $css);
             $this->_res['_js_head'] = implode("\n", $js0);

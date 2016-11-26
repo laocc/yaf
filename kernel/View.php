@@ -2,6 +2,7 @@
 namespace laocc\yaf;
 
 use laocc\yaf\extend\Viewer;
+use Yaf\Config\Ini;
 use Yaf\Dispatcher;
 use Yaf\Plugin_Abstract;
 use Yaf\Registry;
@@ -14,13 +15,13 @@ final class View extends Plugin_Abstract
     private $cache;
     private $setting;
 
-    public function __construct(Dispatcher $dispatcher, Cache $cache, $setting = [])
+    public function __construct(Dispatcher $dispatcher, $setting = [], Cache $cache = null)
     {
+        if ($setting instanceof Ini) $setting = ($setting->toArray());
         $this->dispatcher = $dispatcher;
         $this->cache = $cache;
         $this->setting = $setting + ['layout' => false, 'smarty' => false, 'static' => false, 'concat' => false];
     }
-
 
     /**
      * 3.分发循环开始之前被触发
@@ -29,56 +30,74 @@ final class View extends Plugin_Abstract
      */
     public function dispatchLoopStartup(Request_Abstract $request, Response_Abstract $response)
     {
+
+
         $setting = Registry::get('_route_setting');//路由值
         if (empty($setting)) $setting = [];
-        $_view = $setting + [
+        $viewerConfig = $setting + [
                 'type' => null,
                 'value' => null,
                 'path' => null,
                 'file' => null,
                 'ext' => null,
-
-                //下面取自本对象创建时的设置
-                'layout' => $this->setting['layout'],
-                'smarty' => $this->setting['smarty'],
-                'static' => $this->setting['static'],
-                'concat' => $this->setting['concat'],
                 'view' => true,
             ];
 
+        foreach ($this->setting as $k => $v) {
+            if (!$v) {
+                $viewerConfig[$k] = false;
+            } elseif (!isset($viewerConfig[$k])) {
+                $viewerConfig[$k] = true;
+            }
+            if (!isset($viewerConfig[$k])) $viewerConfig[$k] = false;
+            if ($viewerConfig[$k] == 1) $viewerConfig[$k] = true;
+        }
+
+        if ($viewerConfig['layout'] === true) {
+            if (is_string($this->setting['layout']) and $this->setting['layout'] != 1) {
+                $viewerConfig['layout'] = $this->setting['layout'];
+            }
+        }
+
+        if ($viewerConfig['smarty'] === true) {
+            if (is_string($this->setting['smarty']) and $this->setting['smarty'] != 1) {
+                $viewerConfig['smarty'] = $this->setting['smarty'];
+            }
+        }
+
         //不用视图
-        if (empty($_view['view'])) {
+        if (empty($viewerConfig['view'])) {
             $this->dispatcher->autoRender(false);
             $this->dispatcher->disableView();
             return;
         }
+
         //字串时，指的是响应类型
-        if (is_string($_view['view']) and !empty($_view['view'])) {
-            $_view['type'] = in_array(strtolower($_view['view']), ['html', 'json', 'text', 'xml', 'none']) ? $_view['view'] : 'html';
+        if (is_string($viewerConfig['view']) and !empty($viewerConfig['view'])) {
+            $viewerConfig['type'] = in_array(strtolower($viewerConfig['view']), ['html', 'json', 'text', 'xml', 'none']) ? $viewerConfig['view'] : 'html';
         }
 
         //视图目录
-        if (is_null($_view['path'])) {
-            $_view['path'] = $this->dispatcher->getApplication()->getAppDirectory();
+        if (is_null($viewerConfig['path'])) {
+            $viewerConfig['path'] = $this->dispatcher->getApplication()->getAppDirectory();
             if ($request->getModuleName() !== 'Index') {
-                $_view['path'] .= '/modules/' . $request->getModuleName();
+                $viewerConfig['path'] .= '/modules/' . $request->getModuleName();
             }
-            $_view['path'] = rtrim($_view['path'], '/') . '/views/';
+            $viewerConfig['path'] = rtrim($viewerConfig['path'], '/') . '/views/';
         }
 
         //读取视图后缀
-        if (is_null($_view['ext'])) {
+        if (is_null($viewerConfig['ext'])) {
             $conf = $this->dispatcher->getApplication()->getConfig();
             if (isset($conf->application->view) and isset($conf->application->view->ext)) {
-                $_view['ext'] = $conf->application->view->ext;
+                $viewerConfig['ext'] = $conf->application->view->ext;
             } else {
-                $_view['ext'] = 'phtml';
+                $viewerConfig['ext'] = 'phtml';
             }
         }
 
-
         //创建并注册视图引擎
-        $this->dispatcher->setView(new Viewer($this->dispatcher, $_view, $this->cache, $request->isCli()));
+        $this->dispatcher->setView(new Viewer($this->dispatcher, $viewerConfig, $this->cache, $request->isCli()));
 
     }
 

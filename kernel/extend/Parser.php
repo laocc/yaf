@@ -52,10 +52,18 @@ class Parser implements Route_Interface
                         }
 
                         //构造一个虚拟的请求Request，以替换系统本来的Request，也就是路由结果
-                        $Abstract = new Simple($method, $module, $controller, $action, $matches);
-                        $Abstract->setParam('_effect_route', $key);//标记生效的路由到Request中，供后面程序判断用
+//                        $Abstract = new Simple($method, $module, $controller, $action, $matches);
+//                        $Abstract->setRequestUri($uri);
+//                        $Abstract->getBaseUri($request->getBaseUri());
 
-                        $this->dispatcher->setRequest($Abstract);
+                        $request->setParam('_effect_route', $key);//标记生效的路由到Request中，供后面程序判断用
+                        $request->setModuleName($module);
+                        $request->setControllerName($controller);
+                        $request->setActionName($action);
+                        foreach ($matches as $k => $val) $request->setParam($k, $val);
+                        $request->setRouted();
+
+//                        $this->dispatcher->setRequest($Abstract);
                         return true;
                     }
                     break;
