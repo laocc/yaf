@@ -4,7 +4,7 @@
       "require": {
             "php": ">7.0.0",
             "ext-yaf": ">3.0",
-            "laocc/dbs": "dev-master"
+            "laocc/dbs": ">1.0.1"
       },
       "authors": [
             {
