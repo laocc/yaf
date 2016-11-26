@@ -99,16 +99,6 @@ abstract class Controller extends Controller_Abstract
         return $this->view()->get($key);
     }
 
-    /**
-     * 向框架视图发送一些变量，实际上这儿暂时发送的是视图插件，而不是框架视图，
-     * 如果向框架视图送值，应该用$this->layout()->XXX
-     * 但是如果在没启用layout时，还可以把这些值释放到普通视图里
-     * 也就是说这儿利用视图插件做中转，解析页面时再决定往哪里释放
-     *
-     * @param $file
-     * @param int $position head/body/defer/footer(默认)
-     * @return $this
-     */
     final protected function js($file, $position = 'footer')
     {
         $this->view()->js($file, $position);
