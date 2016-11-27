@@ -16,7 +16,6 @@ final class Router extends Plugin_Abstract
     private $_ini_root = [];
     private $_routes = [];
 
-
     public function __construct(Dispatcher $dispatcher, $setting = [], Cache $cache = null)
     {
         if ($setting instanceof Ini) $setting = ($setting->toArray());
@@ -45,17 +44,21 @@ final class Router extends Plugin_Abstract
         if (!$routeConfig) return;
 
         $this->_routes = $routeConfig = array_reverse($routeConfig->toArray());
-        unset($routeConfig['_default']);
-        if (!isset($this->_routes['_default'])) {
-            $this->_routes['_default'] = [];
-        }
+        unset($routeConfig['_default']);//这是要送入yaf的，不能有_default
+        if (!isset($this->_routes['_default'])) $this->_routes['_default'] = [];
+
 
         //把指定用自定义解析器的部分给剐下来
         $private = [];
         foreach ($routeConfig as $key => $route) {
-            if (isset($route['custom']) and $route['custom']) {
-                $private[$key] = $route;
-                unset($routeConfig[$key]);
+            if (isset($route['route'])) {
+                if ((isset($route['route']['module']) and is_numeric($route['route']['module'])) or
+                    (isset($route['route']['controller']) and is_numeric($route['route']['controller'])) or
+                    (isset($route['route']['action']) and is_numeric($route['route']['action']))
+                ) {
+                    $private[$key] = $route;
+                    unset($routeConfig[$key]);
+                }
             }
         }
         $router = $this->dispatcher->getInstance()->getRouter();
@@ -122,7 +125,6 @@ final class Router extends Plugin_Abstract
         }
 
         Registry::set('_route_setting', $set);
-
     }
 
 

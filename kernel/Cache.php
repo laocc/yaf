@@ -2,10 +2,9 @@
 namespace laocc\yaf;
 
 use laocc\dbs\ext\KeyValue;
-use \Yaf\Config\Ini;
-use \Yaf\Dispatcher;
-use \Yaf\Request_Abstract;
-use \Yaf\Response_Abstract;
+use Yaf\Config\Ini;
+use Yaf\Dispatcher;
+use Yaf\Request_Abstract;
 
 class Cache
 {

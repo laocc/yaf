@@ -2,7 +2,6 @@
 namespace laocc\yaf\extend;
 
 use Yaf\Dispatcher;
-use Yaf\Request\Simple;
 use Yaf\Route_Interface;
 use Yaf\Request_Abstract;
 

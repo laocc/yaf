@@ -1,12 +1,11 @@
 <?php
 namespace laocc\yaf;
 
-use \Yaf\Controller_Abstract;
-use \Yaf\View\Simple;
-use \Yaf\View_Interface;
-
-use \laocc\yaf\extend\Xml;
-use \laocc\yaf\extend\Viewer;
+use laocc\yaf\extend\Xml;
+use laocc\yaf\extend\Viewer;
+use Yaf\Controller_Abstract;
+use Yaf\View\Simple;
+use Yaf\View_Interface;
 
 /**
  * 控制器与视图通信接口，本类只能被控制器扩展
@@ -76,7 +75,7 @@ abstract class Controller extends Controller_Abstract
         return $this->view()->cache($bool);
     }
 
-    final protected function static(bool $bool = true)
+    final protected function static (bool $bool = true)
     {
         return $this->view()->static($bool);
     }
@@ -140,29 +139,21 @@ abstract class Controller extends Controller_Abstract
      */
     final protected function json(array $value)
     {
-        $value = json_encode($value, 256);
-        $callback = isset($_GET['callback']) ? $_GET['callback'] : null;
-        if (!!$callback) $callback = preg_match('/^\w+$/', $callback) ? $callback : null;
-        if (!!$callback) $value = "{$callback}({$value})";
         $this->view()->out_value('json', $value);
     }
 
     final protected function xml($key, array $value = [])
     {
-        if (is_array($key) and empty($value)) list($key, $value) = ['xml', $key];
-        $value = (new Xml($value, $key))->render();
-        $this->view()->out_value('xml', $value);
+        $this->view()->out_value('xml', [$key, $value]);
     }
 
-
-    final protected function text(string $value)
+    final protected function text($value)
     {
         $this->view()->out_value('text', $value);
     }
 
     final protected function html($value)
     {
-        $value = is_array($value) ? json_encode($value, 256) : $value;
         $this->view()->out_value('html', $value);
     }
 

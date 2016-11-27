@@ -32,70 +32,69 @@ final class View extends Plugin_Abstract
     {
         $setting = Registry::get('_route_setting');//路由值
         if (empty($setting)) $setting = [];
-        $viewerConfig = $setting + [
-                'type' => null,
-                'value' => null,
+        $vSetting = $setting + [
                 'path' => null,
                 'file' => null,
                 'ext' => null,
-                'view' => true,
+                'display' => null,
+                'view' => true,//这个值有可能是true/false,或array
             ];
+
 
         foreach ($this->setting as $k => $v) {
             if (!$v) {
-                $viewerConfig[$k] = false;
-            } elseif (!isset($viewerConfig[$k])) {
-                $viewerConfig[$k] = true;
+                $vSetting[$k] = false;
+            } elseif (!isset($vSetting[$k])) {
+                $vSetting[$k] = true;
             }
-            if (!isset($viewerConfig[$k])) $viewerConfig[$k] = false;
-            if ($viewerConfig[$k] == 1) $viewerConfig[$k] = true;
+            if (!isset($vSetting[$k])) $vSetting[$k] = false;
+            if ($vSetting[$k] == 1) $vSetting[$k] = true;
         }
 
-        if ($viewerConfig['layout'] === true) {
+        if ($vSetting['layout'] === true) {
             if (is_string($this->setting['layout']) and $this->setting['layout'] != 1) {
-                $viewerConfig['layout'] = $this->setting['layout'];
+                $vSetting['layout'] = $this->setting['layout'];
             }
         }
 
-        if ($viewerConfig['smarty'] === true) {
+        if ($vSetting['smarty'] === true) {
             if (is_string($this->setting['smarty']) and $this->setting['smarty'] != 1) {
-                $viewerConfig['smarty'] = $this->setting['smarty'];
+                $vSetting['smarty'] = $this->setting['smarty'];
             }
         }
 
         //不用视图
-        if (empty($viewerConfig['view'])) {
+        if (empty($vSetting['view'])) {
             $this->dispatcher->autoRender(false);
             $this->dispatcher->disableView();
             return;
         }
 
-        //字串时，指的是响应类型
-        if (is_string($viewerConfig['view']) and !empty($viewerConfig['view'])) {
-            $viewerConfig['type'] = in_array(strtolower($viewerConfig['view']), ['html', 'json', 'text', 'xml', 'none']) ? $viewerConfig['view'] : 'html';
-        }
+        //强制响应类型
+        $vSetting['display'] = in_array(strtolower($vSetting['display']), ['json', 'text', 'xml']) ? strtolower($vSetting['display']) : null;
+        if ($vSetting['display'] === 'html') $vSetting['display'] = null;
 
         //视图目录
-        if (is_null($viewerConfig['path'])) {
-            $viewerConfig['path'] = $this->dispatcher->getApplication()->getAppDirectory();
+        if (is_null($vSetting['path'])) {
+            $vSetting['path'] = $this->dispatcher->getApplication()->getAppDirectory();
             if ($request->getModuleName() !== 'Index') {
-                $viewerConfig['path'] .= '/modules/' . $request->getModuleName();
+                $vSetting['path'] .= '/modules/' . $request->getModuleName();
             }
-            $viewerConfig['path'] = rtrim($viewerConfig['path'], '/') . '/views/';
+            $vSetting['path'] = rtrim($vSetting['path'], '/') . '/views/';
         }
 
         //读取视图后缀
-        if (is_null($viewerConfig['ext'])) {
+        if (is_null($vSetting['ext'])) {
             $conf = $this->dispatcher->getApplication()->getConfig();
             if (isset($conf->application->view) and isset($conf->application->view->ext)) {
-                $viewerConfig['ext'] = $conf->application->view->ext;
+                $vSetting['ext'] = $conf->application->view->ext;
             } else {
-                $viewerConfig['ext'] = 'phtml';
+                $vSetting['ext'] = 'phtml';
             }
         }
 
         //创建并注册视图引擎
-        $this->dispatcher->setView(new Viewer($this->dispatcher, $viewerConfig, $this->cache, $request->isCli()));
+        $this->dispatcher->setView(new Viewer($this->dispatcher, $vSetting, $this->cache, $request->isCli()));
 
     }
 

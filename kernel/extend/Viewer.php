@@ -1,18 +1,16 @@
 <?php
 namespace laocc\yaf\extend;
 
-
 use laocc\yaf\Cache;
 use Yaf\Config\Ini;
 use Yaf\Dispatcher;
-use Yaf\Registry;
 use Yaf\View_Interface;
 
 class Viewer implements View_Interface
 {
     private $dispatcher;
     private $_cache;
-    private $_config;
+    private $_setting;
     private $_isCli;
     private $_isLayout = false;
 
@@ -34,6 +32,8 @@ class Viewer implements View_Interface
         'json' => 'application/json',
     ];
 
+    private $_display;
+
     private $_layout_default = 'layout.php';
 
     public function __construct(Dispatcher $dispatcher, $conf, Cache $cache = null, $isCli = false)
@@ -42,17 +42,22 @@ class Viewer implements View_Interface
 
         $this->dispatcher = $dispatcher;
         $this->_cache = $cache;
-        $this->_config = $conf;
+        $this->_setting = $conf;
         $this->_isCli = $isCli;
         if (isset($conf['isLayout'])) {
             $this->_isLayout = true;
         }
+        $this->_display = [
+            'force' => $conf['display'],//强制的类型
+            'type' => $conf['display'],
+            'value' => null,
+        ];
     }
 
 
     public function file($cons = null)
     {
-        $this->_config['file'] = $cons;
+        $this->_setting['file'] = $cons;
     }
 
     /**
@@ -65,17 +70,16 @@ class Viewer implements View_Interface
         if ($this->_isLayout) return false;
         if (is_null($cons)) {
             $conf = [
-                'type' => null,
                 'layout' => null,
                 'smarty' => null,
                 'isLayout' => true,
                 'static' => false,
-                'concat' => $this->_config['concat'],
+                'concat' => $this->_setting['concat'],
             ];
             if (is_null($layObj)) $layObj = new Viewer($this->dispatcher, $conf);
             return $layObj;
         }
-        $this->_config['layout'] = $cons;
+        $this->_setting['layout'] = $cons;
         return true;
     }
 
@@ -94,10 +98,10 @@ class Viewer implements View_Interface
 
         if (is_null($cons)) {
             if (is_null($_adapter)) {
-                if (is_string($this->_config['smarty'])) {
-                    $set = ['path' => $this->_config['smarty']];
-                } elseif (is_array($this->_config['smarty'])) {
-                    $set = $this->_config['smarty'];
+                if (is_string($this->_setting['smarty'])) {
+                    $set = ['path' => $this->_setting['smarty']];
+                } elseif (is_array($this->_setting['smarty'])) {
+                    $set = $this->_setting['smarty'];
                 }
                 $_adapter = new \Smarty();
                 if (isset($set['path'])) {
@@ -109,7 +113,7 @@ class Viewer implements View_Interface
             }
             return $_adapter;
         }
-        $this->_config['smarty'] = $cons;
+        $this->_setting['smarty'] = $cons;
         return true;
     }
 
@@ -200,13 +204,6 @@ class Viewer implements View_Interface
         }
     }
 
-    public function out_value($type, string $value)
-    {
-        $this->_config['type'] = $type;
-        $this->_config['value'] = $value;
-    }
-
-
     /**
      * (Yaf >= 2.2.9)
      * 渲染模板并直接输出
@@ -237,12 +234,19 @@ class Viewer implements View_Interface
             return $this->fetch($tpl, $var_array);
         }
 
-        if ($this->_config['type'] === 'none') {
+        if ($this->_display['type'] === 'none') {
             return null;
-        } elseif (!!$this->_config['type']) {//json,xml,text
+
+        } elseif (!!$this->_display['type'] or !!$this->_display['force']) {//json,xml,text
+
+            if (!!$this->_display['force'] and $this->_display['type'] !== $this->_display['force']) {
+                throw new \Exception("页面响应类型与路由表中设置不符");
+            }
             $this->dispatcher->disableView();
-            if (!$this->_isCli) header('Content-type:' . $this->_mime[$this->_config['type']], true);
-            $html = $this->_config['value'];
+            if (!$this->_isCli) header('Content-type:' . $this->_mime[$this->_display['type']], true);
+
+            $html = $this->finishing_display();
+
         } else {
             //修正最后视图文件名称
             $this->real_tpl($tpl);
@@ -250,39 +254,75 @@ class Viewer implements View_Interface
 
             $html = $this->render_all($tpl, $var_array);
         }
-        $type = $this->_config['type'] ?: 'html';
+        $type = $this->_display['type'] ?: 'html';
 
-        if ($this->_cache instanceof Cache)
-            $this->_cache->cache_save($this->_mime[$type], $html, $this->_config['static']);
+        if ($this->_cache instanceof Cache)//缓存
+            $this->_cache->cache_save($this->_mime[$type], $html, $this->_setting['static']);
 
         return $html;
     }
 
 
+    public function out_value($type, $value)
+    {
+        $this->_display['type'] = $type;
+        $this->_display['value'] = $value;
+    }
+
+
+    /**
+     * 整理响应内容，只处理数组
+     */
+    private function finishing_display()
+    {
+        if (!is_array($this->_display['value'])) return $this->_display['value'];
+
+        switch ($this->_display['type']) {
+            case 'text':
+            case 'html':
+                return print_r($this->_display['value'], true);
+
+            case 'json':
+                $value = json_encode($this->_display['value'], 256);
+                $callback = isset($_GET['callback']) ? $_GET['callback'] : null;
+                if (!!$callback) $callback = preg_match('/^\w+$/', $callback) ? $callback : null;
+                if (!!$callback) $value = "{$callback}({$value})";
+                return $value;
+
+            case 'xml':
+                list($root, $value) = $this->_display['value'];
+                return (new Xml($value, $root))->render();
+
+            default:
+                throw new \Exception("未知的响应类型{$this->_display['type']}");
+        }
+    }
+
+
     public function static (bool $bool)
     {
-        $this->_config['static'] = $bool;
+        $this->_setting['static'] = $bool;
     }
 
 
     private function render_all($file, array $value)
     {
         //加一个检查静态的连接
-        if ($this->_config['static']) {
+        if ($this->_setting['static']) {
             $uri = $this->_cache->create_static_uri();
             if ($uri) $this->_res['_js_defer'][] = $uri;
         }
 
-        if ($this->_config['layout']) {
-            if (is_string($this->_config['layout'])) {
-                $i = strpos($this->_config['layout'], '/');
-                if ($i === false and strpos($this->_config['layout'], '.')) {//指定的是文件类型
-                    $this->_layout_default = $this->_config['layout'];
+        if ($this->_setting['layout']) {
+            if (is_string($this->_setting['layout'])) {
+                $i = strpos($this->_setting['layout'], '/');
+                if ($i === false and strpos($this->_setting['layout'], '.')) {//指定的是文件类型
+                    $this->_layout_default = $this->_setting['layout'];
                 } elseif ($i > 0) {
-                    $layout = $this->getScriptPath() . $this->_config['layout'];
+                    $layout = $this->getScriptPath() . $this->_setting['layout'];
 //                    var_dump($layout);
                 } else {
-                    $layout = $this->_config['layout'];
+                    $layout = $this->_setting['layout'];
                     var_dump($layout);
                 }
             }
@@ -316,7 +356,7 @@ class Viewer implements View_Interface
      */
     private function fetch($file, array $value)
     {
-        if ($this->_config['smarty']) {
+        if ($this->_setting['smarty']) {
             return $this->smarty()->fetch($file, $value + $this->_var);
         }
         $this->re_resource();
@@ -336,8 +376,8 @@ class Viewer implements View_Interface
      */
     private function real_tpl(&$file)
     {
-        $file = $this->_config['file'] ?: $file;
-        if (substr($file, -6) != ".{$this->_config['ext']}") $file .= ".{$this->_config['ext']}";
+        $file = $this->_setting['file'] ?: $file;
+        if (substr($file, -6) != ".{$this->_setting['ext']}") $file .= ".{$this->_setting['ext']}";
         if (substr($file, 0, 1) !== '/') $file = $this->getScriptPath() . $file;
     }
 
@@ -350,7 +390,7 @@ class Viewer implements View_Interface
      */
     public function setScriptPath($tpl_dir)
     {
-        $this->_config['path'] = trim($tpl_dir, '/') . '/';
+        $this->_setting['path'] = trim($tpl_dir, '/') . '/';
     }
 
     /**
@@ -361,7 +401,7 @@ class Viewer implements View_Interface
      */
     public function getScriptPath()
     {
-        return $this->_config['path'];
+        return $this->_setting['path'];
     }
 
     /**
@@ -379,7 +419,7 @@ class Viewer implements View_Interface
             return $dom . $item;
         };
 
-        if ($this->_config['concat']) {
+        if ($this->_setting['concat']) {
             $css = $dom . '??' . implode(",", $this->_res['_css']) . $rand;
             $js0 = $dom . '??' . implode(",", $this->_res['_js_head']) . $rand;
             $js1 = $dom . '??' . implode(",", $this->_res['_js_body']) . $rand;
