@@ -194,7 +194,7 @@ class Cache
 
         $drv = strtolower($this->_setting['driver']);
         if (!in_array($drv, ['yac', 'apcu', 'redis', 'memcache', 'memcached']))
-            exit('缓存驱动只能是:yac/apcu/redis/memcache(d)');
+            throw new \Exception('缓存驱动只能是:yac/apcu/redis/memcache(d)');
 
         $conf = $this->_kvConfig ?: (isset($this->_setting[$drv]) ? $this->_setting[$drv] : null);
         if (in_array($drv, ['yac', 'apcu'])) $conf = $this->_setting['fix'];

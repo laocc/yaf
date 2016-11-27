@@ -26,7 +26,7 @@ final class Router extends Plugin_Abstract
             'file' => 'routes.ini',
             'root' => 'product',
         ];
-        if (!is_readable($setting['file'])) exit("路由表Ini文件不存在或不可读：{$setting['file']}");
+        if (!is_readable($setting['file'])) throw new \Exception("路由表Ini文件不存在或不可读：{$setting['file']}");
         $this->_ini_root = [$setting['file'], $setting['root']];
 
     }
@@ -86,7 +86,7 @@ final class Router extends Plugin_Abstract
         //获取生效的路由名称，并读取该路由的相关设置
         $_ef_rt = $request->getParam('_effect_route');
         if (!$_ef_rt) $request->setParam('_effect_route', $_ef_rt = $this->dispatcher->getRouter()->getCurrentRoute());
-        if (!isset($this->_routes[$_ef_rt])) exit("发生未知错误，应该不会出现这情况的：设置的路由表中没有实际生效路由[{$_ef_rt}]");
+        if (!isset($this->_routes[$_ef_rt])) throw new \Exception("发生未知错误，应该不会出现这情况的：设置的路由表中没有实际生效路由[{$_ef_rt}]");
 
         $route = $this->_routes[$_ef_rt];
 
@@ -95,7 +95,7 @@ final class Router extends Plugin_Abstract
 
         //检查请求类型
         if (!$this->method_check($route['method'], $request->getMethod(), $request->isXmlHttpRequest(), $request->isCli())) {
-            exit("请求类型不符合要求");
+            throw new \Exception("请求类型不符合要求");
         }
 
         //指定工作目录

@@ -360,7 +360,7 @@ class Viewer implements View_Interface
                 }
             }
             if (!is_readable($layout))
-                exit('框架视图文件不存在或不可读，请在当前控制器目录或视图根目录创建框架文件' . $this->_layout_default);
+                throw new \Exception('框架视图文件不存在或不可读，请在当前控制器目录或视图根目录创建框架文件' . $this->_layout_default);
 
             $this->layout()->meta($this->_meta);
             $this->layout()->resource($this->_res);

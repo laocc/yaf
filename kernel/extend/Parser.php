@@ -68,7 +68,7 @@ class Parser implements Route_Interface
                     break;
 
                 default:
-                    exit("当前插件只实现了针对[regex]的解析方法。");
+                    throw new \Exception("当前插件只实现了针对[regex]的解析方法。");
                     break;
             }
         }
@@ -105,7 +105,7 @@ class Parser implements Route_Interface
             foreach (['module', 'controller', 'action'] as $key) {
                 ${$key} = isset($route[$key]) ? $route[$key] : ${$key};
                 if (is_numeric(${$key})) {
-                    if (!isset($matches[${$key}])) exit("自定义路由规则中需要第{${$key}}个正则结果，实际无此数据。");
+                    if (!isset($matches[${$key}])) throw new \Exception("自定义路由规则中需要第{${$key}}个正则结果，实际无此数据。");
                     ${$key} = $matches[${$key}];
                 }
             }
