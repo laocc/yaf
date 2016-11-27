@@ -12,6 +12,7 @@ class Mistake extends Plugin_Abstract
     private $dispatcher;
     private $_request;
     private $_setting;
+    private $_root;
 
     public function __construct(Dispatcher $dispatcher, $setting, $callback = null)
     {
@@ -19,7 +20,10 @@ class Mistake extends Plugin_Abstract
         $dispatcher->throwException(true);//出错的时候抛出异常
         $this->dispatcher = $dispatcher;
         $this->callback($callback);
-        $this->_setting = $setting + ['route' => false, 'fontsize' => '100%'];
+        $this->_setting = $setting + ['route' => false, 'fontsize' => '100%', 'root' => null];
+        if ($this->_setting['root']) {
+            $this->_root = rtrim($this->_setting['root'], '/');
+        }
     }
 
     /**
@@ -155,7 +159,7 @@ HTML;
     {
         $state = $this->states($code);
         $server = isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : null;
-        $html = "<html>\n<head><title>{$code} {$state}</title></head>\n<body bgcolor=\"white\">\n<center><h1>{$str} {$state}</h1></center>\n<hr><center>{$server}</center>\n</body>\n</html>";
+        $html = "<html>\n<head><title>{$code} {$state}</title></head>\n<body bgcolor=\"white\">\n<center><h1>{$code} {$state}</h1></center>\n<hr><center>{$server}</center>\n</body>\n</html>";
         if (!stripos(PHP_SAPI, 'cgi')) {
             header("Status: {$code} {$state}", true);
         } else {
@@ -186,7 +190,7 @@ HTML;
         $traceHtml = '';
         foreach (array_reverse($trace) as $tr) {
             $str = '<tr><td class="l">';
-            if (isset($tr['file'])) $str .= $tr['file'];
+            if (isset($tr['file'])) $str .= $this->filter_root($tr['file']);
             if (isset($tr['line'])) $str .= " ({$tr['line']})";
             $str .= '</td><td>';
 
@@ -213,29 +217,34 @@ HTML;
             $Params = empty($route['Params']) ? '' : (implode(',', $route['Params']));
             $mca = $route['Path'] . $route['Module'] . $route['Control'] . '->' . $route['Action'] . '(' . $Params . ')';
             $routeHtml = '<tr><td class="l">生效路由：</td><td>' . $route['Router'] . '</td></tr><tr><td class="l">路由MCA：</td><td>';
-            $routeHtml .= $mca . '</td></tr>';
+            $routeHtml .= $this->filter_root($mca) . '</td></tr>';
             $err['route_name'] = $route['Router'];
             $err['route_mca'] = $mca;
         } else {
             $routeHtml = '';
         }
 
-        $color = ['#def', '#ffe', '#f0c040'];
 
+        $color = ['#def', '#ffe', '#f0c040'];
         $html = printf($this->html,
-            $err['message'],
+            $this->filter_root($err['message']),
             $fontSize,
             $color[0],
             $color[1],
             $color[2],
             $type . '=' . $err['code'],
-            $err['message'],
-            "{$err['file']} ({$err['line']})",
+            $this->filter_root($err['message']),
+            "{$this->filter_root($err['file'])} ({$err['line']})",
             $routeHtml,
             $traceHtml
         );
         $this->callback($err);
         exit($html);
+    }
+
+    private function filter_root($str)
+    {
+        return str_replace($this->_root, '', $str);
     }
 
 
