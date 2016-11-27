@@ -12,9 +12,7 @@ yaf.use_namespace = 1
 
 
 ### 使用示例：
-请克隆另一个库：https://github.com/laocc/yaf_example
-
-这个库也是一个相对完整的yaf结构
+请克隆另一个库：[https://github.com/laocc/yaf_example]，这个库也是一个相对完整的yaf结构
 
 
 ### 功能
