@@ -291,8 +291,7 @@ class Viewer implements View_Interface
                 return $value;
 
             case 'xml':
-                list($root, $value) = $this->_display['value'];
-                return (new Xml($value, $root))->render();
+                return (new Xml(...$this->_display['value']))->render();
 
             default:
                 throw new \Exception("未知的响应类型{$this->_display['type']}");

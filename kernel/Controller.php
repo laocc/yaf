@@ -142,8 +142,11 @@ abstract class Controller extends Controller_Abstract
         $this->view()->out_value('json', $value);
     }
 
-    final protected function xml($key, array $value = [])
+    final protected function xml($value, $key = 'xml')
     {
+        if (!is_array($value) and !is_array($key))
+            throw new \Exception('XML内容须要求为数组格式');
+
         $this->view()->out_value('xml', [$key, $value]);
     }
 
