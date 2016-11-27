@@ -15,6 +15,7 @@ class Viewer implements View_Interface
     private $_isCli;
     private $_isLayout = false;
     private $_var = [];//子视图变量
+    private $_enable = true;
 
     private $_res = [
         '_css' => [],
@@ -62,7 +63,15 @@ class Viewer implements View_Interface
         $this->_setting['file'] = $file;
     }
 
-    public function static_save(bool $bool)
+    /**
+     *
+     */
+    public function enable($bool)
+    {
+        $this->_enable = $bool;
+    }
+
+    public function statics(bool $bool)
     {
         $this->_setting['static'] = $bool;
     }
@@ -194,7 +203,11 @@ class Viewer implements View_Interface
         if (is_array($name)) {
             $this->_meta = array_merge($this->_meta, $name);
         } else {
-            $this->_meta[$name] = $content;
+            if (is_null($content)) {
+                unset($this->_meta[$name]);
+            } else {
+                $this->_meta[$name] = $content;
+            }
         }
     }
 
@@ -238,6 +251,8 @@ class Viewer implements View_Interface
      */
     public function render($tpl, $var_array = array())
     {
+        if (!$this->_enable) return null;
+
         if ($this->_isLayout) {
             return $this->fetch($tpl, $var_array);
         }

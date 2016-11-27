@@ -1,7 +1,6 @@
 <?php
 namespace laocc\yaf;
 
-use laocc\yaf\extend\Xml;
 use laocc\yaf\extend\Viewer;
 use Yaf\Controller_Abstract;
 use Yaf\View\Simple;
@@ -15,8 +14,6 @@ use Yaf\View_Interface;
  */
 abstract class Controller extends Controller_Abstract
 {
-    private $_use_view;
-
 
     /**
      * 1：is_string($tpl)   =设置视图文件
@@ -27,18 +24,19 @@ abstract class Controller extends Controller_Abstract
      */
     final protected function view($tpl = null)
     {
-        if (is_bool($tpl)) return $this->_use_view = $tpl;  //开关
-
         static $obj;
         if (!is_null($obj)) return $obj;
         $obj = $this->getView();
         if (is_null($tpl)) return $obj;
-
+        if (is_bool($tpl)) return $this->view()->enable($tpl);//开关
         return $this->view()->file($tpl);                 //设置视图文件
     }
 
     /**
-     * 向框架赋值，或设置是否使用框架
+     * $set=null 返回layout对象，也就是不带参数
+     * $set=string 设置layout框架文件
+     * $set=bool 设置是否使用layout
+     *
      * @param $use
      * @param null $value
      * @return Simple
@@ -75,9 +73,9 @@ abstract class Controller extends Controller_Abstract
         return $this->view()->cache($bool);
     }
 
-    final protected function static (bool $bool = true)
+    final protected function statics(bool $bool = true)
     {
-        return $this->view()->static($bool);
+        return $this->view()->statics($bool);
     }
 
 
