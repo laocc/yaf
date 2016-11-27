@@ -28,6 +28,7 @@ final class Router extends Plugin_Abstract
         ];
         if (!is_readable($setting['file'])) exit("路由表Ini文件不存在或不可读：{$setting['file']}");
         $this->_ini_root = [$setting['file'], $setting['root']];
+
     }
 
 
