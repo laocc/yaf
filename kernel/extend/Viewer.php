@@ -1,6 +1,7 @@
 <?php
 namespace laocc\yaf\extend;
 
+use laocc\plugs\Xml;
 use laocc\yaf\Cache;
 use Yaf\Config\Ini;
 use Yaf\Dispatcher;
