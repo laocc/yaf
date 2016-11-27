@@ -27,6 +27,8 @@ function LaoCC_databases_register($class)
 
     $namespace = [
         'laocc\\yaf\\' => "{$root}/kernel/",
+        'laocc\\dbs\\' => dirname($root) . "/dbs/kernel/",
+        'laocc\\plugs\\' => dirname($root) . "/plugs/kernel/",
     ];
 
     $classMap = [
