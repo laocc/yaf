@@ -108,4 +108,29 @@ class Bootstrap extends \Yaf\Bootstrap_Abstract
 }
 ```
 
+### 使用：
+
+#### 插件定义示例：
+https://github.com/laocc/yaf_example/blob/master/config/plugs.ini
+
+#### 路由表示例：
+https://github.com/laocc/yaf_example/blob/master/config/routes.ini
+
+#### 控制器中函数表：
+https://github.com/laocc/yaf/blob/master/Controller.md
+
+
+
+### 其他：
+
+本插件包可能还不怎么完善，更多功能不断添加中。若有任何建议或意见，请联系我：QQ：459830045
+
+
+
+
+
+
+
+
+
 

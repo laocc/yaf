@@ -55,6 +55,7 @@ class Viewer implements View_Interface
                 'type' => $conf['display'],
                 'value' => null,
             ];
+            if ($this->_display['type'] === 'html') $this->_display['type'] = null;
         }
     }
 
@@ -86,13 +87,10 @@ class Viewer implements View_Interface
         static $layObj;
         if ($this->_isLayout) return false;
         if (is_null($cons)) {
-            $conf = [
-                'layout' => null,
-                'smarty' => null,
-                'isLayout' => true,
-                'static' => false,
-                'concat' => $this->_setting['concat'],
-            ];
+            $conf = ['layout' => null,
+                    'smarty' => null,
+                    'isLayout' => true,
+                    'static' => false] + $this->_setting;
             if (is_null($layObj)) $layObj = new Viewer($this->dispatcher, $conf);
             return $layObj;
         }
@@ -438,7 +436,7 @@ class Viewer implements View_Interface
      */
     private function re_resource()
     {
-        if (empty($this->_res) or empty($this->_meta)) return;
+        if (empty($this->_res) and empty($this->_meta)) return;
 
         $dom = '';
         $rand = time();
@@ -446,6 +444,14 @@ class Viewer implements View_Interface
             if (substr($item, 0, 4) === 'http') return $item;
             return $dom . $item;
         };
+        $this->_res += [
+            '_css' => [],
+            '_js_head' => [],
+            '_js_body' => [],
+            '_js_footer' => [],
+            '_js_defer' => [],
+            '_title' => null,
+        ];
 
         if ($this->_setting['concat']) {
             $css = $dom . '??' . implode(',', $this->_res['_css']) . $rand;
@@ -482,17 +488,18 @@ class Viewer implements View_Interface
             $this->_res['_js_footer'] = implode("\n", $js2);
             $this->_res['_js_defer'] = implode("\n", $js3);
         }
-        foreach (['title', 'keywords', 'description'] as $item) {
+        foreach (['title', 'keywords', 'description'] as $i => $item) {
             if (!isset($this->_meta[$item]) and isset($this->_setting[$item])) {
                 $this->_meta[$item] = $this->_setting[$item];
             }
         }
-
-        if (isset($this->_meta['title'])) {
-            $this->_res['title'] = $this->_meta['title'];
-            if (isset($this->_meta['_title'])) $this->_res['title'] = $this->_meta['_title'] . $this->_res['title'];
+        if (isset($this->_meta['_title'])) {
+            $this->_res['_title'] = $this->_meta['_title'];
+            if (isset($this->_meta['title'])) $this->_res['_title'] .= '-' . $this->_meta['title'];
+        } elseif (isset($this->_meta['title'])) {
+            $this->_res['_title'] = $this->_meta['title'];
         } else {
-            $this->_res['title'] = '';
+            $this->_res['_title'] = '';
         }
         unset($this->_meta['_title'], $this->_meta['title']);
         foreach ($this->_meta as $name => $content) {

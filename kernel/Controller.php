@@ -114,9 +114,14 @@ abstract class Controller extends Controller_Abstract
         return $this;
     }
 
-    final protected function title($value)
+    final protected function title($value, $full = false)
     {
-        $this->view()->meta('_title', $value);
+        if ($full) {
+            $this->view()->meta('title', $value);
+            $this->view()->meta('_title', null);
+        } else {
+            $this->view()->meta('_title', $value);
+        }
         return $this;
     }
 

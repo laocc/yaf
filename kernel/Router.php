@@ -104,11 +104,15 @@ final class Router extends Plugin_Abstract
 
         $set = [];
         $set['view'] = true;
-        if (isset($route['layout'])) $set['layout'] = $route['layout'];
         if (isset($route['smarty'])) $set['smarty'] = empty($route['smarty']) ? false : $route['smarty'];
         if (isset($route['static'])) $set['static'] = boolval($route['static']);
         if (isset($route['concat'])) $set['concat'] = boolval($route['concat']);
+
+        if (isset($route['layout'])) $set['layout'] = $route['layout'];
         if (isset($route['display'])) $set['display'] = $route['display'];
+        if (isset($route['title'])) $set['title'] = $route['title'];
+        if (isset($route['keywords'])) $set['keywords'] = $route['keywords'];
+        if (isset($route['description'])) $set['description'] = $route['description'];
 
         if (!$request->isCli() and isset($route['cache'])) {
             if ($this->_cache instanceof Cache and !!$route['cache']) $this->_cache->display($request);

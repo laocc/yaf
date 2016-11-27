@@ -1,5 +1,9 @@
 
 # 控制器：
+
+控制器继承自本插件控制器，可以实现以下的操作。但是若不继承本插件，不影响已做过的设置，都按默认值或前面设置过的运行，下面函数表中函数自然就调用不了，对于送变量等操作仍用yaf原生方法。
+另外，此插件引用后也不影响yaf原生函数执行。
+
 ```php
 <?php
 
@@ -21,7 +25,7 @@ class IndexController extends laocc\yaf\Controller
     }
 }
 
-#也就是extends本插件控制器
+#也就是extends本插件控制器，本插件继承自Yaf\Controller_Abstract
 
 ```
 
@@ -40,7 +44,7 @@ class IndexController extends laocc\yaf\Controller
 |$this->meta($name, $content);|向视图发送一个meta值，也可发送数组，不指定第二个参数时为删除该项
 |$this->js($file,$position='footer');|向视图发送一个js文件引用，也可发送数组，$position可选：<br>head：网页HEAD中<br>body：网页BODY开始时<br>footer：网页BODY结束时（默认）<br>defer：延时加载
 |$this->css($file);|向视图发送一个或多个css文件调用
-|$this->title($string);<br>$this->keywords($string);<br>$this->description($string);|网页标题<br>关键词<br>网页描述
+|$this->title($string,$full=false);<br>$this->keywords($string);<br>$this->description($string);|网页标题，$full=true时，此设置为完整title，否则会接上路由中的title<br>关键词<br>网页描述
 |$this->json($array);<br>$this->xml($key,$array);<br>$this->text($string);<br>$this->html($string);|网页的四种响应格式，以最后定义的为准，但也受制于路由中的强制值
 |$this->setScriptPath($path);<br>$this->getScriptPath();|设置和读取视图所在目录
 |$this->display_route();|返回当前路由匹配分配的结果
@@ -53,7 +57,8 @@ class IndexController extends laocc\yaf\Controller
     <meta charset="UTF-8">
     <?php
     /**
-     * 这些是layout中可读取的系统变量，除最后一个$_view_html，若当前没有layout生成，则这些变量会发送至子视图，也就是和控制器动作对应的原本的视图。
+     * 这些是layout中可读取的系统变量，除最后一个$_view_html，
+     * 若当前没有layout生成，则这些变量会发送至子视图，也就是和控制器动作对应的原本的视图。
      * 如果业务中需要向layout发送其他变量，请避开这几个变量。 
      * @var $_title ;
      * @var $_meta ;
