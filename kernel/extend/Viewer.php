@@ -47,12 +47,13 @@ class Viewer implements View_Interface
         $this->_isCli = $isCli;
         if (isset($conf['isLayout'])) {
             $this->_isLayout = true;
+        } else {
+            $this->_display = [
+                'force' => $conf['display'],//强制的类型
+                'type' => $conf['display'],
+                'value' => null,
+            ];
         }
-        $this->_display = [
-            'force' => $conf['display'],//强制的类型
-            'type' => $conf['display'],
-            'value' => null,
-        ];
     }
 
 
@@ -235,30 +236,37 @@ class Viewer implements View_Interface
             return $this->fetch($tpl, $var_array);
         }
 
+        if (!!$this->_display['force'] and $this->_display['type'] !== $this->_display['force']) {
+            if ($this->_display['force'] === 'html' and $this->_display['type'] === null) {
+                //=null时为HTML
+            } elseif ($this->_display['type'] === null) {
+                throw new \Exception("当前路由设置要求输出类型须为[{$this->_display['force']}]");
+            } else {
+                throw new \Exception("页面响应类型[{$this->_display['type']}]与路由表中设置[{$this->_display['force']}]不符");
+            }
+        }
+
         if ($this->_display['type'] === 'none') {
             return null;
 
-        } elseif (!!$this->_display['type'] or !!$this->_display['force']) {//json,xml,text
+        } elseif (!!$this->_display['type']) {//json,xml,text,html
+            $this->dispatcher->disableView();//关闭自动渲染
 
-            if (!!$this->_display['force'] and $this->_display['type'] !== $this->_display['force']) {
-                throw new \Exception("页面响应类型与路由表中设置不符");
-            }
-            $this->dispatcher->disableView();
             if (!$this->_isCli) header('Content-type:' . $this->_mime[$this->_display['type']], true);
 
             $html = $this->finishing_display();
 
         } else {
-            //修正最后视图文件名称
-            $this->real_tpl($tpl);
+            $this->real_tpl($tpl);//修正最后视图文件名称
             if (!is_readable($tpl)) throw new \Exception("视图文件不存在或不可读 {$tpl}");
 
             $html = $this->render_all($tpl, $var_array);
         }
-        $type = $this->_display['type'] ?: 'html';
 
-        if ($this->_cache instanceof Cache)//缓存
+        if ($this->_cache instanceof Cache) {//缓存
+            $type = $this->_display['type'] ?: 'html';
             $this->_cache->cache_save($this->_mime[$type], $html, $this->_setting['static']);
+        }
 
         return $html;
     }
@@ -266,8 +274,13 @@ class Viewer implements View_Interface
 
     public function out_value($type, $value)
     {
-        $this->_display['type'] = $type;
-        $this->_display['value'] = $value;
+        if ($type === 'html' and is_null($value)) {
+            $this->_display['type'] = null;
+            $this->_display['value'] = null;
+        } else {
+            $this->_display['type'] = $type;
+            $this->_display['value'] = $value;
+        }
     }
 
 

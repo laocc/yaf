@@ -146,7 +146,6 @@ abstract class Controller extends Controller_Abstract
     {
         if (!is_array($value) and !is_array($key))
             throw new \Exception('XML内容须要求为数组格式');
-
         $this->view()->out_value('xml', [$key, $value]);
     }
 
@@ -155,7 +154,7 @@ abstract class Controller extends Controller_Abstract
         $this->view()->out_value('text', $value);
     }
 
-    final protected function html($value)
+    final protected function html($value = null)
     {
         $this->view()->out_value('html', $value);
     }

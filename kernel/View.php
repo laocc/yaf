@@ -71,8 +71,8 @@ final class View extends Plugin_Abstract
         }
 
         //强制响应类型
-        $vSetting['display'] = in_array(strtolower($vSetting['display']), ['json', 'text', 'xml']) ? strtolower($vSetting['display']) : null;
-        if ($vSetting['display'] === 'html') $vSetting['display'] = null;
+        $vSetting['display'] = strtolower($vSetting['display']);
+        $vSetting['display'] = in_array($vSetting['display'], ['html', 'json', 'text', 'xml']) ? $vSetting['display'] : null;
 
         //视图目录
         if (is_null($vSetting['path'])) {
