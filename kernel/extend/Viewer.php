@@ -14,7 +14,6 @@ class Viewer implements View_Interface
     private $_setting;
     private $_isCli;
     private $_isLayout = false;
-
     private $_var = [];//子视图变量
 
     private $_res = [
@@ -43,8 +42,10 @@ class Viewer implements View_Interface
 
         $this->dispatcher = $dispatcher;
         $this->_cache = $cache;
-        $this->_setting = $conf;
+        $this->_setting = $conf + ['file' => null];
         $this->_isCli = $isCli;
+        unset($conf['view']);
+
         if (isset($conf['isLayout'])) {
             $this->_isLayout = true;
         } else {
@@ -56,11 +57,16 @@ class Viewer implements View_Interface
         }
     }
 
-
-    public function file($cons = null)
+    public function file($file)
     {
-        $this->_setting['file'] = $cons;
+        $this->_setting['file'] = $file;
     }
+
+    public function static_save(bool $bool)
+    {
+        $this->_setting['static'] = $bool;
+    }
+
 
     /**
      * @param null $cons
@@ -312,12 +318,6 @@ class Viewer implements View_Interface
     }
 
 
-    public function static (bool $bool)
-    {
-        $this->_setting['static'] = $bool;
-    }
-
-
     private function render_all($file, array $value)
     {
         //加一个检查静态的连接
@@ -349,10 +349,10 @@ class Viewer implements View_Interface
             if (!is_readable($layout))
                 exit('框架视图文件不存在或不可读，请在当前控制器目录或视图根目录创建框架文件' . $this->_layout_default);
 
-            $this->layout()->meta($this->_meta + ['_title' => null]);
+            $this->layout()->meta($this->_meta);
             $this->layout()->resource($this->_res);
 
-            $this->_meta = $this->_res = [];
+            $this->_meta = $this->_res = [];//清空这两个信息，因为这些都已释放到框架中了
 
             return $this->layout()->render($layout, ['_view_html' => $this->fetch($file, $value)]);
         }
@@ -391,7 +391,7 @@ class Viewer implements View_Interface
     {
         $file = $this->_setting['file'] ?: $file;
         if (substr($file, -6) != ".{$this->_setting['ext']}") $file .= ".{$this->_setting['ext']}";
-        if (substr($file, 0, 1) !== '/') $file = $this->getScriptPath() . $file;
+        if (substr($file, 0, 1) !== '/') $file = $this->_setting['path'] . $file;
     }
 
     /**
@@ -433,11 +433,11 @@ class Viewer implements View_Interface
         };
 
         if ($this->_setting['concat']) {
-            $css = $dom . '??' . implode(",", $this->_res['_css']) . $rand;
-            $js0 = $dom . '??' . implode(",", $this->_res['_js_head']) . $rand;
-            $js1 = $dom . '??' . implode(",", $this->_res['_js_body']) . $rand;
-            $js2 = $dom . '??' . implode(",", $this->_res['_js_footer']) . $rand;
-            $js3 = $dom . '??' . implode(",", $this->_res['_js_defer']) . $rand;
+            $css = $dom . '??' . implode(',', $this->_res['_css']) . $rand;
+            $js0 = $dom . '??' . implode(',', $this->_res['_js_head']) . $rand;
+            $js1 = $dom . '??' . implode(',', $this->_res['_js_body']) . $rand;
+            $js2 = $dom . '??' . implode(',', $this->_res['_js_footer']) . $rand;
+            $js3 = $dom . '??' . implode(',', $this->_res['_js_defer']) . $rand;
 
             $this->_res['_css'] = "<link rel=\"stylesheet\" href=\"{$css}\" charset=\"utf-8\"/>";
             $this->_res['_js_head'] = "<script type=\"text/javascript\" src=\"{$js0}\" charset=\"utf-8\"></script>\n";
@@ -467,8 +467,19 @@ class Viewer implements View_Interface
             $this->_res['_js_footer'] = implode("\n", $js2);
             $this->_res['_js_defer'] = implode("\n", $js3);
         }
-        $this->_res['_title'] = $this->_meta['_title'];
-        unset($this->_meta['_title']);
+        foreach (['title', 'keywords', 'description'] as $item) {
+            if (!isset($this->_meta[$item]) and isset($this->_setting[$item])) {
+                $this->_meta[$item] = $this->_setting[$item];
+            }
+        }
+
+        if (isset($this->_meta['title'])) {
+            $this->_res['title'] = $this->_meta['title'];
+            if (isset($this->_meta['_title'])) $this->_res['title'] = $this->_meta['_title'] . $this->_res['title'];
+        } else {
+            $this->_res['title'] = '';
+        }
+        unset($this->_meta['_title'], $this->_meta['title']);
         foreach ($this->_meta as $name => $content) {
             $this->_meta[$name] = "<meta name=\"{$name}\" content=\"{$content}\" />";
         }

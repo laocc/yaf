@@ -32,14 +32,7 @@ final class View extends Plugin_Abstract
     {
         $setting = Registry::get('_route_setting');//路由值
         if (empty($setting)) $setting = [];
-        $vSetting = $setting + [
-                'path' => null,
-                'file' => null,
-                'ext' => null,
-                'display' => null,
-                'view' => true,//这个值有可能是true/false,或array
-            ];
-
+        $vSetting = $setting + ['path' => null, 'ext' => null, 'display' => null,];
 
         foreach ($this->setting as $k => $v) {
             if (!$v) {
@@ -63,21 +56,18 @@ final class View extends Plugin_Abstract
             }
         }
 
-        //不用视图
-        if (empty($vSetting['view'])) {
-            $this->dispatcher->autoRender(false);
-            $this->dispatcher->disableView();
-            return;
-        }
-
         //强制响应类型
         $vSetting['display'] = strtolower($vSetting['display']);
         $vSetting['display'] = in_array($vSetting['display'], ['html', 'json', 'text', 'xml']) ? $vSetting['display'] : null;
 
+        $app = $this->dispatcher->getApplication();
+        $conf = $app->getConfig();
+
         //视图目录
         if (is_null($vSetting['path'])) {
-            $vSetting['path'] = $this->dispatcher->getApplication()->getAppDirectory();
-            if ($request->getModuleName() !== 'Index') {
+            $vSetting['path'] = $app->getAppDirectory();
+            $defaultModule = ucfirst(strtolower($conf->application->dispatcher->defaultModule));
+            if ($request->getModuleName() !== $defaultModule) {
                 $vSetting['path'] .= '/modules/' . $request->getModuleName();
             }
             $vSetting['path'] = rtrim($vSetting['path'], '/') . '/views/';
@@ -85,7 +75,6 @@ final class View extends Plugin_Abstract
 
         //读取视图后缀
         if (is_null($vSetting['ext'])) {
-            $conf = $this->dispatcher->getApplication()->getConfig();
             if (isset($conf->application->view) and isset($conf->application->view->ext)) {
                 $vSetting['ext'] = $conf->application->view->ext;
             } else {
@@ -95,7 +84,6 @@ final class View extends Plugin_Abstract
 
         //创建并注册视图引擎
         $this->dispatcher->setView(new Viewer($this->dispatcher, $vSetting, $this->cache, $request->isCli()));
-
     }
 
 

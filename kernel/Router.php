@@ -120,7 +120,7 @@ final class Router extends Plugin_Abstract
         if (isset($route['view'])) {
             if (!$route['view']) {
                 $set['view'] = false;
-            } else {
+            } elseif (is_array($route['view'])) {
                 $set['view'] = $route['view'];
             }
         }
