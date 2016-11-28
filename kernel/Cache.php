@@ -23,7 +23,7 @@ class Cache
         if ($conn instanceof Ini) $conn = ($conn->toArray());
 
         $this->dispatcher = $dispatcher;
-        $this->_setting = $setting + ['ttl' => 120, 'driver' => 'yac', 'token' => 'token', 'autorun' => true, 'fix' => 'yafCache'];
+        $this->_setting = $setting + ['ttl' => 120, 'driver' => 'yac', 'token' => 'token', 'autorun' => true, 'fix' => 'yafCache', 'zip' => []];
         $this->_kvConfig = $conn;//redis等连接信息
         $this->_static = $static + ['action' => '_check_static_expires_', 'token' => 'my static token', 'expires' => 86400 * 365];
         $this->_enable = boolval($setting['autorun']);
@@ -45,10 +45,12 @@ class Cache
         if (!$cache) goto no_cache;
 
         $cache = explode($this->_block, $cache);
-        if (!!$cache[0]) {
-            if (isset($cache[1]) and $cache[1]) header('Content-type:' . $cache[1], true);
+        if (!empty($cache)) {
+            $type = $cache[1];
+            if (!!$cache[0]) $type .= ";charset={$cache[0]};";
+            header("Content-type:{$type}", true);
             $this->cache_header('cache display');
-            exit($cache[0]);
+            exit($cache[2]);
         }
         return true;
 
@@ -63,7 +65,23 @@ class Cache
      */
     private function static_save($html)
     {
-        if (!isset($this->_static['match']) or !is_array($this->_static['match'])) return false;
+        $filename = $this->static_filename();
+        if (!$filename) return false;
+
+        $save = $this->static_save_file($filename, $html);
+        if ($save !== strlen($html)) {
+            @unlink($filename);
+            return false;
+        }
+        return true;
+    }
+
+    private function static_filename()
+    {
+        static $filename;
+        if (!is_null($filename)) return $filename;
+        if (!isset($this->_static['match']) or !is_array($this->_static['match'])) return $filename = false;
+        if (intval($this->_static['expires']) === 0) return $filename = false;
         $request = $this->dispatcher->getRequest();
         $uri = $request->getRequestUri();
 
@@ -74,17 +92,11 @@ class Cache
                 break;
             }
         }
-        if (is_null($filename) or preg_match('/^.+((\.php)|\/)$/i', $filename)) return false;
-
-        $save = $this->save_file($filename, $html);
-        if ($save !== strlen($html)) {
-            @unlink($filename);
-            return false;
-        }
-        return true;
+        if (is_null($filename) or preg_match('/^.+((\.php)|\/)$/i', $filename)) return $filename = null;
+        return $filename;
     }
 
-    private function save_file($file, $content)
+    private function static_save_file($file, $content)
     {
         if (is_array($content)) $content = json_encode($content, 256);
         @mkdir(dirname($file), 0740, true);
@@ -119,7 +131,7 @@ class Cache
      */
     public function create_static_uri()
     {
-        if (intval($this->_static['expires']) === 0) return null;
+        if (!$this->static_filename()) return null;
         $uri = '/' . $this->_static['action'] . '/' . time() . '/';
         return $uri . md5($uri . $this->_static['token']);
     }
@@ -131,27 +143,28 @@ class Cache
      * @param $html
      * @param bool $static
      */
-    public function cache_save($type, $html, $static = true)
+    public function cache_save($charset, $type, $html, $static = true)
     {
         if (!$this->_enable) return;
-        $zip = 0;
+        if (!is_array($this->_setting['zip'])) $this->_setting['zip'] = [];
+        $zip = $this->_setting['zip'] + ['space' => false, 'notes' => false, 'empty' => false, 'line' => false];
 
         //连续两个以上空格变成一个
-//        $value = preg_replace(['/\x20{2,}/'], ' ', $value);
+        if ($zip['space']) $html = preg_replace(['/\x20{2,}/'], ' ', $html);
 
         //删除:所有HTML注释
-        $html = preg_replace(['/\<\!--.*?--\>/'], '', $html);
+        if ($zip['notes']) $html = preg_replace(['/\<\!--.*?--\>/'], '', $html);
 
         //删除:HTML之间的空格
-        $html = preg_replace(['/\>([\s\x20])+\</'], '><', $html);
+        if ($zip['empty']) $html = preg_replace(['/\>([\s\x20])+\</'], '><', $html);
 
         //全部HTML归为一行
-        if ($zip) $html = preg_replace(['/[\n\t\r]/s'], '', $html);
+        if ($zip['line']) $html = preg_replace(['/[\n\t\r]/s'], '', $html);
 
         if ($static and $this->static_save($html)) return;
         if (empty($this->_key) or $this->cache_expires() < 1) return;
 
-        if ($this->db()->set($this->_key, "{$html}{$this->_block}{$type}", $this->cache_expires())) {
+        if ($this->db()->set($this->_key, "{$charset}{$this->_block}{$type}{$this->_block}{$html}", $this->cache_expires())) {
             $this->cache_header('cache save');
         }
     }

@@ -1,11 +1,13 @@
 <?php
 namespace laocc\yaf;
 
-use Yaf\Config\Ini;
 use Yaf\Dispatcher;
 use Yaf\Plugin_Abstract;
-use Yaf\Request_Abstract;
-use Yaf\Response_Abstract;
+use Yaf\Config\Ini;
+
+use \Yaf\Exception as YafError;
+use \Yaf\Exception\LoadFailed as YafFailed;
+
 
 class Mistake extends Plugin_Abstract
 {
@@ -19,11 +21,13 @@ class Mistake extends Plugin_Abstract
         if ($setting instanceof Ini) $setting = ($setting->toArray());
         $dispatcher->throwException(true);//出错的时候抛出异常
         $this->dispatcher = $dispatcher;
+        $this->_request = $dispatcher->getRequest();
         $this->callback($callback);
         $this->_setting = $setting + ['route' => false, 'fontsize' => '100%', 'root' => null];
         if ($this->_setting['root']) {
             $this->_root = rtrim($this->_setting['root'], '/');
         }
+        $this->register_handler();
     }
 
     /**
@@ -41,41 +45,9 @@ class Mistake extends Plugin_Abstract
     }
 
 
-    /**
-     *
-     * 产生一个错误信息，具体处理，由\plugins\Mistake处理
-     * @param $str
-     * @param int $level 错误级别，012，
-     *
-     * 0：系统停止执行，严重级别
-     * 1：提示错误，继续运行
-     * 2：警告级别，在生产环境中不提示，仅发给管理员
-     *
-     * error("{$filePath} 不是有效文件。");
-     */
-    public static function try_error($str, int $level = 0, $trace = null)
+    private function register_handler()
     {
-        if ($level < 0) $level = 0;
-        if ($level > 2) $level = 2;
-        $level = 256 << $level;
-        if (is_string($str)) {
-            $err = $trace ?: debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT | DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0];
-            unset($err['function']);
-            $err['message'] = $str;
-            $err['code'] = $level;
-            $str = json_encode($err, 256);
-        }
-        //产生一个用户级别的 error/warning/notice 信息
-        trigger_error($str, $level);
-    }
-
-
-    /**
-     * 1.在路由之前触发
-     */
-    public function routerStartup(Request_Abstract $request, Response_Abstract $response)
-    {
-        $handler_yaf = function ($errNo, $errStr, $errFile, $errLine) use ($request) {
+        $handler_yaf = function ($errNo, $errStr, $errFile, $errLine) {
             if ($errNo === E_RECOVERABLE_ERROR) {
             }
 
@@ -89,17 +61,44 @@ class Mistake extends Plugin_Abstract
                 $err['line'] = $errLine;
             }
             if (!$err) return;
-            $this->displayError('warn', $err, [], $request->isCli());
+            $this->displayError('warn', $err, [], $this->_request->isCli());
         };
 
-        $handler_error = function ($err) use ($request) {
-            ($err instanceof \Error) and 1;
+        $handler_error = function ($err) {
             $arr = [];
-            $arr['message'] = $err->getMessage();
+
+            try {
+                throw $err;
+            } catch (YafFailed\Module $e) {
+                $arr['message'] = '加载【模块】失败';
+            } catch (YafFailed\Controller $e) {
+                $arr['message'] = '加载【控制器】失败';
+            } catch (YafFailed\Action $e) {
+                $arr['message'] = '加载【控制器->动作】失败';
+            } catch (YafFailed\View $e) {
+                $arr['message'] = '加载【视图】失败';
+            } catch (YafError\LoadFailed $e) {
+                $arr['message'] = '加载文件失败:' . $e->getMessage();
+            } catch (YafError\DispatchFailed $e) {
+                $arr['message'] = '分发失败:' . $e->getMessage();
+            } catch (YafError\RouterFailed $e) {
+                $arr['message'] = '路由失败:' . $e->getMessage();
+            } catch (YafError\StartupError $e) {
+                $arr['message'] = '启动失败:' . $e->getMessage();
+            } catch (YafError\TypeError $e) {
+                $arr['message'] = '逻辑错误:' . $e->getMessage();
+            } catch (YafError $e) {
+                $arr['message'] = '其他错误:' . $e->getMessage();
+            } catch (\Exception $e) {
+                $arr['message'] = $e->getMessage();
+            }
+
+            ($err instanceof \Error) and 1;
+            if (!isset($arr['message'])) $arr['message'] = $err->getMessage();
             $arr['code'] = $err->getCode();
             $arr['file'] = $err->getFile();
             $arr['line'] = $err->getLine();
-            $this->displayError('error', $arr, $err->getTrace(), $request->isCli());
+            $this->displayError('error', $arr, $err->getTrace(), $this->_request->isCli());
         };
 
         /**
@@ -123,34 +122,6 @@ class Mistake extends Plugin_Abstract
         set_exception_handler($handler_error);
     }
 
-    public function dispatchLoopStartup(Request_Abstract $request, Response_Abstract $response)
-    {
-        //重新拉取request，因为前面注册set_exception_handler时用的request已过时
-        $this->_request = $request;
-    }
-
-    private $html = <<<HTML
-<!DOCTYPE html><html lang="zh-cn"><head>
-    <meta charset="UTF-8"><title>%s</title>
-    <style>
-    body {margin: 0;padding: 0;font-size: %s;}
-    table {width: 80%%;margin: 1em auto;border: 1px solid #456;box-shadow: 5px 5px 2px #ccc;}
-    tr,td {overflow: hidden;}
-    td {text-indent: 0.5em;line-height: 2em;}
-    table.head {background: %s;}table.head td.l {width: 6em;font-weight: bold;}td.msg{color:red;}
-    table.trade tr:nth-child(odd){background: %s;} 
-    table.trade tr.nav{background: %s;} 
-    table.trade td {border-bottom: 1px solid #abc;}table.trade td.l {width: 40%%;}</style>
-</head><body>
-<table class="head" cellpadding="0" cellspacing="0">
-<tr><td class="l">错误代码：</td><td>%s</td></tr>
-<tr><td class="l">错误信息：</td><td class="msg">%s</td></tr>
-<tr><td class="l">错误文件：</td><td>%s</td></tr>%s
-</table><table class="trade" cellpadding="0" cellspacing="0">
-<tr class="nav"><td colspan="2"><b>Trace</b> : (执行顺序从上到下)</td></tr>%s</table></body></html>
-HTML;
-
-
     /**
      * 显示成一个错误状态
      * @param $code
@@ -172,9 +143,6 @@ HTML;
 
     private function displayError($type, $err, $trace, $isCli)
     {
-        $request = $this->_request;
-        ($request instanceof Request_Abstract) && 1;
-
         if ($isCli) {
             echo "\n\e[40;31;m================ERROR=====================\e[0m\n";
             print_r($err);
@@ -208,34 +176,54 @@ HTML;
             $traceHtml .= $str;
         }
 
-        $fontSize = $this->_setting['fontsize'] ?: '75%';
-        if (is_numeric($fontSize)) $fontSize .= ($fontSize > 50 ? '%' : 'px');
-
-
         if ($this->_setting['route']) {
-            $route = $this->get_routes_info($request);
-            $Params = empty($route['Params']) ? '' : (implode(',', $route['Params']));
-            $mca = $route['Path'] . $route['Module'] . $route['Control'] . '->' . $route['Action'] . '(' . $Params . ')';
-            $routeHtml = '<tr><td class="l">生效路由：</td><td>' . $route['Router'] . '</td></tr><tr><td class="l">路由MCA：</td><td>';
-            $routeHtml .= $this->filter_root($mca) . '</td></tr>';
-            $err['route_name'] = $route['Router'];
-            $err['route_mca'] = $mca;
+            $route = $this->get_routes_info();
+            if (!empty($route)) {
+                $Params = empty($route['Params']) ? '' : (implode(',', $route['Params']));
+                $mca_name = "{$route['Router']} : {$route['Module']} / {$route['Control']} / {$route['Action']}";
+                $mca_file = $route['Path'] . $route['ModulePath'] . $route['Control'] . '->' . $route['Action'] . '(' . $Params . ')';
+                $routeHtml = '<tr><td class="l">路由结果：</td><td>' . $mca_name . '</td></tr><tr><td class="l">路由请求：</td><td>';
+                $routeHtml .= $this->filter_root($mca_file) . '</td></tr>';
+                $err['route_name'] = $mca_name;
+                $err['route_mca'] = $mca_file;
+            } else {
+                $routeHtml = '';
+            }
         } else {
             $routeHtml = '';
         }
 
-
-        $color = ['#def', '#ffe', '#f0c040'];
-        $html = printf($this->html,
+        $fontSize = $this->_setting['fontsize'] ?: '75%';
+        if (is_numeric($fontSize)) $fontSize .= ($fontSize > 50 ? '%' : 'px');
+        $color = ['#555', '#def', '#ffe', '#f0c040'];
+        $html = <<<HTML
+<!DOCTYPE html><html lang="zh-cn"><head>
+<meta charset="UTF-8"><title>%s</title>
+<style>
+body {margin: 0;padding: 0;font-size: %s;color:{$color[0]};font-family:"Source Code Pro", "Arial", "Microsoft YaHei", "msyh", "sans-serif";}
+table {width: 80%%;margin: 1em auto;border: 1px solid #456;box-shadow: 5px 5px 2px #ccc;}
+tr,td {overflow: hidden;}
+td {text-indent: 0.5em;line-height: 2em;}
+table.head {background: {$color[1]};}table.head td.l {width: 6em;font-weight: bold;}td.msg{color:red;}
+table.trade tr:nth-child(odd){background: {$color[2]};} 
+table.trade tr.nav{background: {$color[3]};} td.time{text-align: right;padding-right:1em;}
+table.trade td {border-bottom: 1px solid #abc;}table.trade td.l {width: 40%%;}</style>
+</head><body>
+<table class="head" cellpadding="0" cellspacing="0">
+<tr><td class="l">错误代码：</td><td>%s</td></tr>
+<tr><td class="l">错误信息：</td><td class="msg">%s</td></tr>
+<tr><td class="l">错误位置：</td><td>%s</td></tr>%s
+</table><table class="trade" cellpadding="0" cellspacing="0">
+<tr class="nav"><td><b>Trace</b> : (执行顺序从上往下)</td><td class="time">%s</td></tr>%s</table></body></html>
+HTML;
+        $html = printf($html,
             $this->filter_root($err['message']),
             $fontSize,
-            $color[0],
-            $color[1],
-            $color[2],
             $type . '=' . $err['code'],
             $this->filter_root($err['message']),
             "{$this->filter_root($err['file'])} ({$err['line']})",
             $routeHtml,
+            date('Y-m-d H:i:s'),
             $traceHtml
         );
         $this->callback($err);
@@ -248,32 +236,33 @@ HTML;
     }
 
 
-    private function get_routes_info(Request_Abstract $request)
+    private function get_routes_info()
     {
         $app = $this->dispatcher->getApplication();
         $config = $app->getConfig();
-        $Params = $request->getParams();
+        $Params = $this->_request->getParams();
         unset($Params['_effect_route']);
         $route = [];
         $route['Path'] = $app->getAppDirectory();
-        $route['Module'] = $request->getModuleName();
+        $route['Module'] = $this->_request->getModuleName();
+        if (empty($route['Module'])) return null;
 
         $separator = ini_get('yaf.name_separator');
         if (boolval(ini_get('yaf.name_suffix'))) {
-            $route['Control'] = "{$request->getControllerName()}{$separator}Controller";
-            $route['Action'] = "{$request->getActionName()}{$separator}Action";
+            $route['Control'] = "{$this->_request->getControllerName()}{$separator}Controller";
+            $route['Action'] = "{$this->_request->getActionName()}{$separator}Action";
         } else {
-            $route['Control'] = "Controller{$separator}{$request->getControllerName()}";
-            $route['Action'] = "Action{$separator}{$request->getActionName()}";
+            $route['Control'] = "Controller{$separator}{$this->_request->getControllerName()}";
+            $route['Action'] = "Action{$separator}{$this->_request->getActionName()}";
         }
 
         $route['Params'] = $Params ?: [];
-        $route['Router'] = $request->getParam('_effect_route');
+        $route['Router'] = $this->_request->getParam('_effect_route');
         $defaultModule = ucfirst(strtolower($config->application->dispatcher->defaultModule));
         if ($route['Module'] === $defaultModule) {
-            $route['Module'] = '/controllers/';
+            $route['ModulePath'] = '/controllers/';
         } else {
-            $route['Module'] = "/{$route['Module']}/controllers/";
+            $route['ModulePath'] = "/{$route['Module']}/controllers/";
         }
 
         return $route;

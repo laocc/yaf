@@ -16,6 +16,7 @@ class Viewer implements View_Interface
     private $_isLayout = false;
     private $_var = [];//子视图变量
     private $_enable = true;
+    private $_charset = 'utf-8';
 
     private $_res = [
         '_css' => [],
@@ -271,7 +272,11 @@ class Viewer implements View_Interface
         } elseif (!!$this->_display['type']) {//json,xml,text,html
             $this->dispatcher->disableView();//关闭自动渲染
 
-            if (!$this->_isCli) header('Content-type:' . $this->_mime[$this->_display['type']], true);
+            if (!$this->_isCli) {
+                $type = $this->_mime[$this->_display['type']];
+                if ($this->_charset) $type .= ";charset={$this->_charset};";
+                header("Content-type:{$type}", true);
+            }
 
             $html = $this->finishing_display();
 
@@ -284,14 +289,14 @@ class Viewer implements View_Interface
 
         if ($this->_cache instanceof Cache) {//缓存
             $type = $this->_display['type'] ?: 'html';
-            $this->_cache->cache_save($this->_mime[$type], $html, $this->_setting['static']);
+            $this->_cache->cache_save($this->_charset, $this->_mime[$type], $html, $this->_setting['static']);
         }
 
         return $html;
     }
 
 
-    public function out_value($type, $value)
+    public function out_value($type, $value, $force)
     {
         if ($type === 'html' and is_null($value)) {
             $this->_display['type'] = null;
@@ -300,8 +305,15 @@ class Viewer implements View_Interface
             $this->_display['type'] = $type;
             $this->_display['value'] = $value;
         }
+        if ($force) {
+            $this->_display['force'] = null;
+        }
     }
 
+    public function charset($value)
+    {
+        $this->_charset = $value;
+    }
 
     /**
      * 整理响应内容，只处理数组
@@ -334,9 +346,8 @@ class Viewer implements View_Interface
     private function render_all($file, array $value)
     {
         //加一个检查静态的连接
-        if ($this->_setting['static']) {
-            $uri = $this->_cache->create_static_uri();
-            if ($uri) $this->_res['_js_defer'][] = $uri;
+        if ($this->_setting['static'] and $uri = $this->_cache->create_static_uri()) {
+            $this->_res['_js_defer'][] = $uri;
         }
 
         if ($this->_setting['layout']) {

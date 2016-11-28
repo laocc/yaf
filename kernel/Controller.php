@@ -140,26 +140,33 @@ abstract class Controller extends Controller_Abstract
     /**
      * ======================================================设置网页展示方式===========================
      */
-    final protected function json(array $value)
+    final protected function json(array $value, $force = false)
     {
-        $this->view()->out_value('json', $value);
+        $this->view()->out_value('json', $value, $force);
     }
 
-    final protected function xml($value, $key = 'xml')
+    final protected function xml($value, $key = 'xml', $force = false)
     {
         if (!is_array($value) and !is_array($key))
             throw new \Exception('XML内容须要求为数组格式');
-        $this->view()->out_value('xml', [$key, $value]);
+        if (is_bool($key)) list($key, $force) = ['xml', $key];
+
+        $this->view()->out_value('xml', [$key, $value], $force);
     }
 
-    final protected function text($value)
+    final protected function text($value, $force = false)
     {
-        $this->view()->out_value('text', $value);
+        $this->view()->out_value('text', $value, $force);
     }
 
-    final protected function html($value = null)
+    final protected function html($value = null, $force = false)
     {
-        $this->view()->out_value('html', $value);
+        $this->view()->out_value('html', $value, $force);
+    }
+
+    final protected function charset($value = 'utf-8')
+    {
+        $this->view()->charset($value);
     }
 
 
