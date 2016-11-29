@@ -291,8 +291,7 @@ class Viewer implements View_Interface
             $type = $this->_display['type'] ?: 'html';
             $this->_cache->cache_save($this->_charset, $this->_mime[$type], $html, $this->_setting['static']);
         }
-
-        return $html;
+        return strval($html);
     }
 
 

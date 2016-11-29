@@ -82,6 +82,8 @@ final class View extends Plugin_Abstract
             }
         }
 
+        Registry::set('_route_setting', $vSetting);
+
         //创建并注册视图引擎
         $this->dispatcher->setView(new Viewer($this->dispatcher, $vSetting, $this->cache, $request->isCli()));
     }

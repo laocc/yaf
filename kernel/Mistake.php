@@ -141,6 +141,14 @@ class Mistake extends Plugin_Abstract
         exit($html);
     }
 
+    private function duo2tow(&$array)
+    {
+        foreach ($array as $i => &$arr) {
+            if (is_array($arr)) $arr = json_encode($arr, 256);
+        }
+    }
+
+
     private function displayError($type, $err, $trace, $isCli)
     {
         if ($isCli) {
@@ -168,6 +176,7 @@ class Mistake extends Plugin_Abstract
                 if (empty($tr['args'])) {
                     $args = null;
                 } else {
+                    $this->duo2tow($tr['args']);
                     $args = '"' . implode('","', $tr['args']) . '"';
                 }
                 $str .= "{$tr['function']}({$args})";

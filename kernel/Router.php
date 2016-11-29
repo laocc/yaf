@@ -103,6 +103,12 @@ final class Router extends Plugin_Abstract
             $app->setAppDirectory($route['directory']);
         }
 
+        //指定为yar服务器端
+        if (isset($route['yar_server']) and !!$route['yar_server']) {
+
+//            (new \Yar_Server(new RegisterApi()))->handle();
+        }
+
         $set = [];
         $set['view'] = true;
         if (isset($route['smarty'])) $set['smarty'] = empty($route['smarty']) ? false : $route['smarty'];
